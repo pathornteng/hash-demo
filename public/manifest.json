@@ -1,0 +1,9 @@
+{
+  "short_name": "Hash-Demo",
+  "name": "Hedera Network capability and service demonstration",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
