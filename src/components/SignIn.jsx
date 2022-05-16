@@ -7,7 +7,7 @@ import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
-import { PrivateKey, PublicKey } from "@hashgraph/cryptography";
+import { PrivateKey } from "@hashgraph/cryptography";
 import { Alert } from "@mui/material";
 
 function Copyright(props) {
@@ -38,7 +38,6 @@ const SignIn = (props) => {
       const account = {
         accountId: data.get("accountId"),
         privateKey: data.get("privateKey"),
-        publicKey: data.get("publicKey"),
         name: data.get("accountName"),
       };
 
@@ -46,8 +45,9 @@ const SignIn = (props) => {
       if (!account.accountId || result.status !== 200) {
         throw Error("Invalid account id");
       }
-      PrivateKey.fromString(account.privateKey);
-      PublicKey.fromString(account.publicKey);
+      const privateKey = PrivateKey.fromString(account.privateKey);
+      account.publicKey = privateKey.publicKey.toString();
+
       props.signIn(account);
     } catch (err) {
       console.warn(err);
@@ -97,14 +97,6 @@ const SignIn = (props) => {
           <TextField
             margin="normal"
             fullWidth
-            required
-            name="publicKey"
-            label="Public Key"
-            id="publicKey"
-          />
-          <TextField
-            margin="normal"
-            fullWidth
             name="accountName"
             label="Account Name"
             id="accountName"
@@ -126,6 +118,11 @@ const SignIn = (props) => {
           </Grid>
         </Box>
       </Box>
+      <Typography variant="caption">
+        Hash Demo is designed to work with testnet. All user keys, private and
+        public keys, are kept in browser local storage. Using Hash Demo will
+        incur transaction fee to the account on testnet.
+      </Typography>
       <Copyright sx={{ mt: 3, mb: 4 }} />
     </Container>
   );
