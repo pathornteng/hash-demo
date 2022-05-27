@@ -22,7 +22,7 @@ const App = () => {
   const [account, setAccount] = useState();
   const [accounts, setAccounts] = useState();
   const client = Client.forTestnet();
-  const api = new MirrorNodeAPI(process.env.REACT_APP_API_URL);
+  const api = new MirrorNodeAPI();
 
   useEffect(() => {
     if (account) client.setOperator(account.accountId, account.privateKey);
