@@ -11,7 +11,6 @@ import {
   TokenType,
   PrivateKey,
   TokenAssociateTransaction,
-  TokenInfoQuery,
   TransferTransaction,
   TokenMintTransaction,
   TokenNftInfoQuery,
@@ -45,6 +44,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Box } from "@mui/system";
+import MirrorNodeAPI from "../api/mirror-node-api";
 
 const style = {
   position: "absolute",
@@ -93,6 +93,7 @@ const NonFungibleToken = (props) => {
         .setAccountId(props.accountId)
         .execute(props.client);
       setHbarBalance(accountBalance.hbars.toString());
+      const api = new MirrorNodeAPI();
       const account = await new AccountInfoQuery()
         .setAccountId(props.accountId)
         .execute(props.client);
@@ -100,8 +101,8 @@ const NonFungibleToken = (props) => {
       let tokenInfo = {};
       setLoading(true);
       for (const [tokenId, token] of account.tokenRelationships) {
-        const query = new TokenInfoQuery().setTokenId(tokenId);
-        tokenInfo[tokenId.toString()] = await query.execute(props.client);
+        const query = await api.getToken(tokenId);
+        tokenInfo[tokenId.toString()] = query.data;
         tokenRelationships.push(token);
       }
       setLoading(false);
@@ -191,6 +192,8 @@ const NonFungibleToken = (props) => {
     }
   };
 
+  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
   const associateToken = async () => {
     setBackdropOpen(true);
     try {
@@ -240,6 +243,7 @@ const NonFungibleToken = (props) => {
       let tokenCreateSubmit = await tokenCreateSign.execute(props.client);
       let tokenCreateRx = await tokenCreateSubmit.getReceipt(props.client);
       let tokenId = tokenCreateRx.tokenId;
+      await delay(10000);
       setSnackbar({
         open: true,
         message: "NFT is created successfully, tokenID: " + tokenId,
@@ -266,8 +270,7 @@ const NonFungibleToken = (props) => {
   const tokenList = tokens
     .filter(
       (token) =>
-        tokenInfo[token.tokenId.toString()].tokenType ===
-        TokenType.NonFungibleUnique
+        tokenInfo[token.tokenId.toString()].type === "NON_FUNGIBLE_UNIQUE"
     )
     .map((token, index) => {
       return (
@@ -299,11 +302,11 @@ const NonFungibleToken = (props) => {
               </div>
               <div>
                 <b>IsDeleted:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.isDeleted?.toString()}
+                {tokenInfo[token.tokenId.toString()]?.deleted?.toString()}
               </div>
               <div>
                 <b>TokenType:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.tokenType?.toString()}
+                {tokenInfo[token.tokenId.toString()]?.type?.toString()}
               </div>
               <hr />
               <div>

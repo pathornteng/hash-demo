@@ -7,7 +7,7 @@ HashDemo is a demonstration application built for [Hedera Network](https://hed
 ## Prerequisite
 
 ```bash
-node v14
+node
 ```
 
 ## Install

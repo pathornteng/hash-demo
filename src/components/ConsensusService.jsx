@@ -39,7 +39,7 @@ const ConsensusService = (props) => {
     try {
       if (!topicIdRef.current) return;
       setTopicId(topicIdRef.current.value);
-      const api = new MirrorNodeAPI(process.env.REACT_APP_API_URL);
+      const api = new MirrorNodeAPI();
       const response = await api.getTopicMessages(topicId.toString());
       setMessages(response.data.messages);
     } catch (err) {

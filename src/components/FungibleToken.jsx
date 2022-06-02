@@ -11,7 +11,6 @@ import {
   PrivateKey,
   TokenAssociateTransaction,
   TokenDeleteTransaction,
-  TokenInfoQuery,
   TransferTransaction,
   TokenMintTransaction,
 } from "@hashgraph/sdk";
@@ -39,6 +38,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Box } from "@mui/system";
+import MirrorNodeAPI from "../api/mirror-node-api";
 
 const style = {
   position: "absolute",
@@ -94,10 +94,11 @@ const FungibleToken = (props) => {
         .execute(props.client);
       let tokenRelationships = [];
       let tokenInfo = {};
+      const api = new MirrorNodeAPI();
       setLoading(true);
       for (const [tokenId, token] of account.tokenRelationships) {
-        const query = new TokenInfoQuery().setTokenId(tokenId);
-        tokenInfo[tokenId.toString()] = await query.execute(props.client);
+        const query = await api.getToken(tokenId);
+        tokenInfo[tokenId.toString()] = query.data;
         tokenRelationships.push(token);
       }
       setTokenInfo(tokenInfo);
@@ -107,6 +108,8 @@ const FungibleToken = (props) => {
     fetchAccount();
     setSigKey(PrivateKey.fromString(props.privateKey));
   }, [props.accountId, props.client, props.privateKey, refreshCount]);
+
+  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
   const transferToken = async () => {
     setBackdropOpen(true);
@@ -181,9 +184,7 @@ const FungibleToken = (props) => {
 
   const tokenList = tokens
     .filter(
-      (token) =>
-        tokenInfo[token.tokenId.toString()].tokenType !==
-        TokenType.NonFungibleUnique
+      (token) => tokenInfo[token.tokenId.toString()].type === "FUNGIBLE_COMMON"
     )
     .map((token) => {
       return (
@@ -215,11 +216,11 @@ const FungibleToken = (props) => {
               </div>
               <div>
                 <b>IsDeleted:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.isDeleted?.toString()}
+                {tokenInfo[token.tokenId.toString()]?.deleted?.toString()}
               </div>
               <div>
                 <b>TokenType:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.tokenType?.toString()}
+                {tokenInfo[token.tokenId.toString()]?.type?.toString()}
               </div>
               <hr />
               <div>
@@ -323,6 +324,7 @@ const FungibleToken = (props) => {
       //GET THE TRANSACTION RECEIPT
       let tokenCreateRx = await tokenCreateSubmit.getReceipt(props.client);
       let tokenId = tokenCreateRx.tokenId;
+      await delay(10000);
       setSnackbar({
         message: "Create token success, tokenID: " + tokenId,
         severity: "success",
