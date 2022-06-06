@@ -37,17 +37,6 @@ class MirrorNodeAPI {
     }
   }
 
-  async getAccount(accountId) {
-    try {
-      return await this.req.get(`api/v1/accounts/${accountId}`);
-    } catch (err) {
-      return {
-        status: 400,
-        err: err,
-      };
-    }
-  }
-
   async getContract(contractId) {
     try {
       return await this.req.get(`api/v1/contracts/${contractId}`);
@@ -76,6 +65,17 @@ class MirrorNodeAPI {
       return await this.req.get(
         `api/v1/transactions?account.id=${accountId}&limit=5`
       );
+    } catch (err) {
+      return {
+        status: 400,
+        err: err,
+      };
+    }
+  }
+
+  async getAccount(accountId) {
+    try {
+      return await this.req.get(`api/v1/accounts/${accountId}`);
     } catch (err) {
       return {
         status: 400,

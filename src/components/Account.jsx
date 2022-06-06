@@ -6,7 +6,6 @@ import {
   AccountBalanceQuery,
   TransferTransaction,
   Hbar,
-  AccountInfoQuery,
   PrivateKey,
   AccountCreateTransaction,
 } from "@hashgraph/sdk";
@@ -27,7 +26,10 @@ import {
   CircularProgress,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Modal,
+  Select,
   Snackbar,
   TextField,
   Tooltip,
@@ -52,6 +54,7 @@ const Account = (props) => {
   const [createAccountModalOpen, setCreateAccountModalOpen] = useState(false);
   const [accountInfo, setAccountInfo] = useState({});
   const [backdropOpen, setBackdropOpen] = useState(false);
+  const [privateKey, setPrivateKey] = useState("");
   const [refreshCount, setRefreshCount] = useState(0);
   const [snackbar, setSnackbar] = useState({
     message: "",
@@ -64,6 +67,7 @@ const Account = (props) => {
   const fetchAccountRef = useRef();
   const accountNameRef = useRef();
   const initBalanceRef = useRef();
+  const keyTypeRef = useRef();
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -72,8 +76,10 @@ const Account = (props) => {
         .execute(props.client);
       setHbarBalance(accountBalance.hbars.toString());
     };
+    const privateKey = PrivateKey.fromString(props.account.privateKey);
+    setPrivateKey(privateKey.toStringRaw());
     fetchBalance();
-  }, [props.account, props.client, refreshCount]);
+  }, [props.account, props.client, refreshCount, privateKey]);
 
   const transfer = async () => {
     setBackdropOpen(true);
@@ -115,7 +121,12 @@ const Account = (props) => {
   const createAccount = async () => {
     setBackdropOpen(true);
     try {
-      const newAccountPrivateKey = await PrivateKey.generateED25519();
+      let newAccountPrivateKey;
+      if (keyTypeRef.current.value === "ED25519") {
+        newAccountPrivateKey = await PrivateKey.generateED25519();
+      } else if (keyTypeRef.current.value === "ECDSA") {
+        newAccountPrivateKey = await PrivateKey.generateECDSA();
+      }
       const newAccountPublicKey = newAccountPrivateKey.publicKey;
       const createAccountTx = await new AccountCreateTransaction()
         .setKey(newAccountPublicKey)
@@ -181,12 +192,13 @@ const Account = (props) => {
   const fetchAccount = async () => {
     setBackdropOpen(true);
     try {
-      const accountInfo = await new AccountInfoQuery()
-        .setAccountId(fetchAccountRef.current?.value)
-        .execute(props.client);
+      const accountInfo = await props.api.getAccount(
+        fetchAccountRef.current?.value
+      );
+      console.log(accountInfo.data);
 
       setAccountInfo({
-        information: accountInfo,
+        information: accountInfo.data,
       });
     } catch (err) {
       console.warn(err);
@@ -250,8 +262,14 @@ const Account = (props) => {
             <b>Public Key:</b> {props.account.publicKey}
           </Typography>
           <Typography sx={{ fontSize: 16 }} color="text.secondary" gutterBottom>
-            <b>Private Key:</b>{" "}
+            <b>Private Key:</b> Der:
             <Tooltip arrow title={props.account.privateKey}>
+              <IconButton>
+                <Key />
+              </IconButton>
+            </Tooltip>
+            Raw:
+            <Tooltip arrow title={privateKey}>
               <IconButton>
                 <Key />
               </IconButton>
@@ -372,6 +390,19 @@ const Account = (props) => {
               />
             </Grid>
             <Grid item xs={12}>
+              <InputLabel id="key-type">Key Type</InputLabel>
+              <Select
+                labelId="demo-simple-select-label"
+                id="demo-simple-select"
+                label="KeyType"
+                defaultValue="ED25519"
+                inputRef={keyTypeRef}
+              >
+                <MenuItem value="ED25519">ED25519</MenuItem>
+                <MenuItem value="ECDSA">ECDSA</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item xs={12}>
               <Button
                 variant="contained"
                 component="label"
@@ -429,64 +460,50 @@ const Account = (props) => {
               {accountInfo.information != null && (
                 <div>
                   <div>
-                    <b>AccountID:</b>{" "}
-                    {accountInfo.information?.accountId?.toString()}
+                    <b>AccountID:</b> {accountInfo.information?.account}
                   </div>
                   <div>
                     <b>Balance:</b>{" "}
-                    {accountInfo.information?.balance?.toString()}
+                    {Hbar.fromTinybars(
+                      accountInfo.information?.balance?.balance
+                    ).toString()}
                   </div>
                   <div>
-                    <b>IsDeleted:</b>{" "}
-                    {accountInfo.information?.isDeleted?.toString()}
+                    <b>Tokens:</b>{" "}
+                    <pre>
+                      {JSON.stringify(
+                        accountInfo.information?.balance?.tokens,
+                        null,
+                        2
+                      )}
+                    </pre>
                   </div>
                   <div>
-                    <b>ProxyAccountID:</b>{" "}
-                    {accountInfo.information?.proxyAccountId?.toString()}
+                    <b>Alias:</b> {accountInfo.information?.alias}
                   </div>
                   <div>
-                    <b>ProxyReceived:</b>{" "}
-                    {accountInfo.information?.proxyReceived?.toString()}
+                    <b>Deleted:</b>{" "}
+                    {accountInfo.information?.deleted?.toString()}
                   </div>
                   <div>
-                    <b>ProxyReceived:</b>{" "}
-                    {accountInfo.information?.proxyReceived?.toString()}
-                  </div>
-                  <div>
-                    <b>PublicKey:</b> {accountInfo.information?.key?.toString()}
-                  </div>
-                  <div>
-                    <b>SendRecordThreshold:</b>{" "}
-                    {accountInfo.information?.sendRecordThreshold?.toString()}
-                  </div>
-                  <div>
-                    <b>ReceiveRecordThreshold:</b>{" "}
-                    {accountInfo.information?.receiveRecordThreshold?.toString()}
-                  </div>
-                  <div>
-                    <b>ReceiveRecordThreshold:</b>{" "}
-                    {accountInfo.information?.receiveRecordThreshold?.toString()}
-                  </div>
-                  <div>
-                    <b>IsReceiverSignatureRequired:</b>{" "}
-                    {accountInfo.information?.isReceiverSignatureRequired?.toString()}
+                    <b>Keys:</b>{" "}
+                    <pre>
+                      {JSON.stringify(accountInfo.information?.key, null, 2)}
+                    </pre>
                   </div>
                   <div>
                     <b>Expiration:</b>{" "}
-                    {new Date(
-                      Math.round(
-                        accountInfo.information?.expirationTime?.toString()
-                      ) * 1000
-                    ).toLocaleString()}
+                    {accountInfo.information?.expiry_timestamp}
                   </div>
                   <div>
-                    <b>AutoRenewPeriod:</b>{" "}
-                    {accountInfo.information?.autoRenewPeriod?.seconds.toString()}{" "}
-                    seconds
+                    <b>Auto Renew Period:</b>{" "}
+                    {accountInfo.information?.auto_renew_period}
                   </div>
                   <div>
-                    <b>AccountMemo:</b>{" "}
-                    {accountInfo.information?.accountMemo?.toString()}
+                    <b>EVM Address:</b> {accountInfo.information?.evm_address}
+                  </div>
+                  <div>
+                    <b>AccountMemo:</b> {accountInfo.information?.memo}
                   </div>
                 </div>
               )}
