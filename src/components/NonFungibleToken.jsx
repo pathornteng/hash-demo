@@ -103,6 +103,7 @@ const NonFungibleToken = (props) => {
       for (const [tokenId, token] of account.tokenRelationships) {
         const query = await api.getToken(tokenId);
         tokenInfo[tokenId.toString()] = query.data;
+        console.log(tokenInfo[tokenId.toString()]);
         tokenRelationships.push(token);
       }
       setLoading(false);
@@ -329,8 +330,12 @@ const NonFungibleToken = (props) => {
                 >
                   View
                 </Button>{" "}
-                {tokenInfo[token.tokenId.toString()]?.adminKey?.toString() ===
-                  props.publicKey && (
+                {tokenInfo[
+                  token.tokenId.toString()
+                ]?.admin_key?.key?.toString() ===
+                  PrivateKey.fromString(
+                    props.privateKey
+                  ).publicKey.toStringRaw() && (
                   <Button
                     variant="contained"
                     component="label"
