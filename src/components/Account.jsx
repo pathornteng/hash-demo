@@ -8,6 +8,7 @@ import {
   Hbar,
   PrivateKey,
   AccountCreateTransaction,
+  AccountUpdateTransaction,
 } from "@hashgraph/sdk";
 import {
   AccountBalanceWallet,
@@ -17,6 +18,7 @@ import {
   Download,
   Key,
   MonetizationOn,
+  MoneyOff,
   Send,
 } from "@mui/icons-material";
 import {
@@ -52,6 +54,7 @@ const Account = (props) => {
   const [hbarBalance, setHbarBalance] = useState("0");
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [createAccountModalOpen, setCreateAccountModalOpen] = useState(false);
+  const [stakeModalOpen, setStakeModalOpen] = useState(false);
   const [accountInfo, setAccountInfo] = useState({});
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [privateKey, setPrivateKey] = useState("");
@@ -68,6 +71,7 @@ const Account = (props) => {
   const accountNameRef = useRef();
   const initBalanceRef = useRef();
   const keyTypeRef = useRef();
+  const stakeAccountRef = useRef();
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -80,6 +84,34 @@ const Account = (props) => {
     setPrivateKey(privateKey.toStringRaw());
     fetchBalance();
   }, [props.account, props.client, refreshCount, privateKey]);
+
+  const stake = async () => {
+    setBackdropOpen(true);
+    try {
+      const txResponse = await new AccountUpdateTransaction()
+        .setAccountId(props.account.accountId)
+        .setStakedAccountId(stakeAccountRef.current?.value)
+        .execute(props.client);
+
+      //Request the receipt of the transaction
+      const receipt = await txResponse.getReceipt(props.client);
+      console.log(receipt);
+      setSnackbar({
+        message: "Staking succeeded!",
+        severity: "success",
+        open: true,
+      });
+    } catch (err) {
+      console.warn(err);
+      setSnackbar({
+        message: "Staking failed!" + err.toString(),
+        severity: "error",
+        open: true,
+      });
+    }
+
+    setBackdropOpen(false);
+  };
 
   const transfer = async () => {
     setBackdropOpen(true);
@@ -295,6 +327,15 @@ const Account = (props) => {
             onClick={() => setCreateAccountModalOpen(true)}
           >
             Create Account
+          </Button>{" "}
+          <Button
+            variant="contained"
+            component="label"
+            startIcon={<MoneyOff />}
+            color="secondary"
+            onClick={() => setStakeModalOpen(true)}
+          >
+            Stake
           </Button>
           {!props.account.isMainAccount && (
             <IconButton
@@ -429,6 +470,51 @@ const Account = (props) => {
         </Box>
       </Modal>
       <br />
+      <Modal
+        open={stakeModalOpen}
+        onClose={() => setStakeModalOpen(false)}
+        aria-labelledby="modal-modal-title"
+        aria-describedby="modal-modal-description"
+      >
+        <Box sx={style}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <TextField
+                id="AccountId"
+                name="AccountId"
+                label="Account Id"
+                fullWidth
+                variant="standard"
+                inputRef={stakeAccountRef}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<Send />}
+                color="secondary"
+                onClick={() => {
+                  stake();
+                }}
+              >
+                Stake
+              </Button>
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<Close />}
+                color="error"
+                style={{ float: "right" }}
+                onClick={() => setStakeModalOpen(false)}
+              >
+                Close
+              </Button>
+            </Grid>
+          </Grid>
+        </Box>
+      </Modal>
+      <br />
       <Card sx={{ minWidth: 275 }}>
         <CardContent>
           <Typography gutterBottom variant="h6" component="div">
@@ -503,7 +589,19 @@ const Account = (props) => {
                     <b>EVM Address:</b> {accountInfo.information?.evm_address}
                   </div>
                   <div>
-                    <b>AccountMemo:</b> {accountInfo.information?.memo}
+                    <b>Account Memo:</b> {accountInfo.information?.memo}
+                  </div>
+                  <div>
+                    <b>Staked Account ID:</b>{" "}
+                    {accountInfo.information?.staked_account_id}
+                  </div>
+                  <div>
+                    <b>Staked Node ID:</b>{" "}
+                    {accountInfo.information?.staked_node_id}
+                  </div>
+                  <div>
+                    <b>Staked Period Start:</b>{" "}
+                    {accountInfo.information?.stake_period_start}
                   </div>
                 </div>
               )}
