@@ -16,6 +16,7 @@
     "axios": "^0.27.2",
     "buffer": "^6.0.3",
     "dotenv": "^16.0.0",
+    "hashconnect": "^0.2.4",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.3.0",

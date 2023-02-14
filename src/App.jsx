@@ -19,140 +19,63 @@ import MirrorNodeAPI from "./api/mirror-node-api";
 import "./App.css";
 
 const App = () => {
-  const [account, setAccount] = useState();
-  const [accounts, setAccounts] = useState();
-  const client = Client.forTestnet();
+  const [wallet, setWallet] = useState();
   const api = new MirrorNodeAPI();
 
-  useEffect(() => {
-    if (account) client.setOperator(account.accountId, account.privateKey);
-  }, [account, accounts, client]);
+  useEffect(() => {}, [wallet]);
 
   useEffect(() => {
     loadAccounts();
   }, []);
 
   const loadAccounts = () => {
-    const currentAccount = JSON.parse(localStorage.getItem("currentAccount"));
-    if (currentAccount) {
-      setAccount(currentAccount);
-      setAccounts([currentAccount]);
-    }
-
-    const localAccounts = JSON.parse(localStorage.getItem("accounts"));
-    if (localAccounts) setAccounts(localAccounts);
+    // const currentAccount = JSON.parse(localStorage.getItem("currentAccount"));
+    // if (currentAccount) {
+    //   setAccount(currentAccount);
+    //   setAccounts([currentAccount]);
+    // }
+    // const localAccounts = JSON.parse(localStorage.getItem("accounts"));
+    // if (localAccounts) setAccounts(localAccounts);
   };
 
-  const changeAccount = (account) => {
-    setAccount(account);
-    if (account) {
-      localStorage.setItem("currentAccount", JSON.stringify(account));
-    } else {
-      localStorage.removeItem("currentAccount");
-    }
-  };
-
-  const signIn = (account) => {
-    localStorage.setItem("currentAccount", JSON.stringify(account));
-    localStorage.setItem("accounts", JSON.stringify([account]));
-    setAccount(account);
-    setAccounts([account]);
+  const pairWallet = (wallet) => {
+    console.log("pairWallet Call ---------");
+    localStorage.setItem("hashconnectData", JSON.stringify(wallet[1]));
+    setWallet(wallet);
   };
 
   const renderApp = () => {
-    if (account) {
+    if (wallet) {
       return (
         <Box>
-          <Navbar
-            accountId={account.accountId}
-            accounts={accounts}
-            changeAccount={changeAccount}
-            api={api}
-          />
+          <Navbar wallet={wallet} api={api} />
           <CssBaseline />
           <Stack direction="row" spacing={2}>
-            <Sidebar account={account} api={api} />
+            <Sidebar accountId={wallet[1].pairedAccount} api={api} />
             <Box flex={10} pr={2} pt={2} pb={2}>
               <Routes>
                 <Route path="/" element={<MainContent />} />
                 <Route
                   path="/account"
-                  element={
-                    <Account
-                      account={account}
-                      accounts={accounts}
-                      setAccounts={setAccounts}
-                      changeAccount={changeAccount}
-                      client={client}
-                      api={api}
-                    />
-                  }
+                  element={<Account wallet={wallet} api={api} />}
                 />
-                <Route
-                  path="/network"
-                  element={
-                    <Network
-                      accountId={account.accountId}
-                      privateKey={account.privateKey}
-                      publicKey={account.publicKey}
-                      client={client}
-                    />
-                  }
-                />
-                <Route
-                  path="/file"
-                  element={
-                    <FileService
-                      accountId={account.accountId}
-                      privateKey={account.privateKey}
-                      publicKey={account.publicKey}
-                      client={client}
-                    />
-                  }
-                />
+                <Route path="/network" element={<Network wallet={wallet} />} />
+                <Route path="/file" element={<FileService wallet={wallet} />} />
                 <Route
                   path="/consensus"
-                  element={
-                    <ConsensusService
-                      accountId={account.accountId}
-                      privateKey={account.privateKey}
-                      publicKey={account.publicKey}
-                      client={client}
-                    />
-                  }
+                  element={<ConsensusService wallet={wallet} />}
                 />
                 <Route
                   path="/fungible-token"
-                  element={
-                    <FungibleToken
-                      accountId={account.accountId}
-                      privateKey={account.privateKey}
-                      publicKey={account.publicKey}
-                      client={client}
-                    />
-                  }
+                  element={<FungibleToken wallet={wallet} />}
                 />
                 <Route
                   path="/non-fungible-token"
-                  element={
-                    <NonFungibleToken
-                      accountId={account.accountId}
-                      privateKey={account.privateKey}
-                      publicKey={account.publicKey}
-                      client={client}
-                    />
-                  }
+                  element={<NonFungibleToken wallet={wallet} />}
                 />
                 <Route
                   path="/smart-contract"
-                  element={
-                    <SmartContract
-                      accountId={account.accountId}
-                      privateKey={account.privateKey}
-                      publicKey={account.publicKey}
-                      client={client}
-                    />
-                  }
+                  element={<SmartContract wallet={wallet} />}
                 />
               </Routes>
             </Box>
@@ -160,7 +83,7 @@ const App = () => {
         </Box>
       );
     } else {
-      return <SignIn signIn={signIn} api={api} />;
+      return <SignIn api={api} pairWallet={pairWallet} />;
     }
   };
 

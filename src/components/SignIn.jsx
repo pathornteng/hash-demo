@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { HashConnect } from "hashconnect";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
@@ -55,6 +56,58 @@ const SignIn = (props) => {
     }
   };
 
+  const handleConnect = async (event) => {
+    event.preventDefault();
+    try {
+      let hashconnectData = {
+        topic: "",
+        pairingString: "",
+        pairingData: "",
+        pairedAccount: "",
+        sign: (transaction) => {},
+      };
+      let appMetadata = {
+        name: "HashDemo",
+        description:
+          "HashDemo provides users with a minimalist design web application to interact with Hedera services",
+        icon: "https://hashdemo.com/favicon.png",
+      };
+      let hashconnect = new HashConnect(true);
+
+      // First init and store the pairing private key for later (this is NOT your account private key)
+      const initData = await hashconnect.init(appMetadata, "testnet", false);
+      hashconnectData.topic = initData.topic;
+      hashconnectData.pairingData = initData.savedPairings[0];
+      hashconnectData.pairingString = initData.pairingString;
+      console.log(
+        `- ParingString for pairing: ${hashconnectData.pairingString}`
+      );
+      console.log(`- Pairing topic is: ${hashconnectData.topic}`);
+      console.log(`- Pairing Data is: ${hashconnectData.pairingData}`);
+
+      hashconnect.pairingEvent.once((pairingData) => {
+        pairingData.accountIds.forEach((id) => {
+          hashconnectData.pairedAccount = id;
+          console.log("hashconnectData", hashconnectData);
+          const wallet = [hashconnect, hashconnectData];
+          props.pairWallet(wallet);
+          console.log(`- Paired account id: ${id}`);
+        });
+      });
+
+      hashconnect.foundExtensionEvent.once((walletMetadata) => {
+        console.log("Found some event", walletMetadata);
+        //do something with metadata
+      });
+
+      // Find any supported local wallets
+      hashconnect.connectToLocalWallet();
+    } catch (err) {
+      console.warn(err);
+      setErrorMsg("Failed to connect wallet: " + err.toString());
+    }
+  };
+
   return (
     <Container component="main" maxWidth="xs">
       <CssBaseline />
@@ -74,40 +127,17 @@ const SignIn = (props) => {
         <Typography component="h1" variant="h6">
           Hash Demo
         </Typography>
-        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+        <Box component="form" noValidate sx={{ mt: 1 }}>
           {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="accountId"
-            label="Account ID"
-            name="accountId"
-            autoFocus
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="privateKey"
-            label="Private Key"
-            type="password"
-            id="privateKey"
-          />
-          <TextField
-            margin="normal"
-            fullWidth
-            name="accountName"
-            label="Account Name"
-            id="accountName"
-          />
+
           <Button
             type="submit"
             fullWidth
             variant="contained"
+            onClick={handleConnect}
             sx={{ mt: 3, mb: 2 }}
           >
-            Sign In
+            Connect HashPack
           </Button>
           <Grid container>
             <Grid item>

@@ -66,14 +66,6 @@ const Navbar = (props) => {
     console.log(mobileOpen);
   };
 
-  const handleAccountChange = (e) => {
-    props.accounts.forEach((account) => {
-      if (e.target.value === account.accountId) {
-        props.changeAccount(account);
-      }
-    });
-  };
-
   const openLink = (url) => {
     window.open(url, "_blank", "noopener");
   };
@@ -87,25 +79,25 @@ const Navbar = (props) => {
       if (queryArray.length === 1) {
         resp = await props.api.getAccount(query);
         if (resp.status === 200) {
-          openLink(`https://hashscan.io/#/testnet/account/${query}`);
+          openLink(`https://hashscan.io/testnet/account/${query}`);
           return;
         }
 
         resp = await props.api.getToken(query);
         if (resp.status === 200) {
-          openLink(`https://hashscan.io/#/testnet/token/${query}`);
+          openLink(`https://hashscan.io/testnet/token/${query}`);
           return;
         }
 
         resp = await props.api.getTopic(query);
         if (resp.status === 200) {
-          openLink(`https://hashscan.io/#/testnet/topic/${query}`);
+          openLink(`https://hashscan.io/testnet/topic/${query}`);
           return;
         }
 
         resp = await props.api.getContract(query);
         if (resp.status === 200) {
-          openLink(`https://hashscan.io/#/testnet/contract/${query}`);
+          openLink(`https://hashscan.io/testnet/contract/${query}`);
           return;
         }
       }
@@ -117,19 +109,11 @@ const Navbar = (props) => {
 
       resp = await props.api.getTransaction(query);
       if (resp.status === 200) {
-        openLink(`https://hashscan.io/#/testnet/transaction/${query}`);
+        openLink(`https://hashscan.io/testnet/transaction/${query}`);
         return;
       }
     }
   };
-
-  const accountList = props.accounts.map((account, index) => {
-    return (
-      <MenuItem key={account.accountId} value={account.accountId}>
-        {`[${account.name}] - ${account.accountId}`}
-      </MenuItem>
-    );
-  });
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -164,17 +148,7 @@ const Navbar = (props) => {
               Demo
             </NavLink>
           </Typography>
-          <b>Account ID:</b>{" "}
-          <FormControl sx={{ m: 1, minWidth: 80 }}>
-            <Select
-              autoWidth
-              value={props.accountId}
-              style={{ color: "white" }}
-              onChange={handleAccountChange}
-            >
-              {accountList}
-            </Select>
-          </FormControl>
+          <b>Account ID:</b> {props.wallet[1].pairedAccount}
           <Search>
             <SearchIconWrapper>
               <SearchIcon />

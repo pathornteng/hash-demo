@@ -37,9 +37,7 @@ const Sidebar = (props) => {
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const txs = await props.api.getTransactionsByAccountId(
-        props.account.accountId
-      );
+      const txs = await props.api.getTransactionsByAccountId(props.accountId);
       const txList = txs.data.transactions.map((tx) => {
         return (
           <Box key={tx.transaction_hash} mt={1}>
@@ -63,7 +61,7 @@ const Sidebar = (props) => {
                     <a
                       target="_blank"
                       rel="noopener noreferrer"
-                      href={`https://hashscan.io/#/testnet/transaction/${tx.transaction_id}`}
+                      href={`https://hashscan.io/testnet/transaction/${tx.consensus_timestamp}`}
                     >
                       {tx.transaction_id}
                     </a>
@@ -81,7 +79,7 @@ const Sidebar = (props) => {
     return () => {
       clearInterval(scheduler);
     };
-  }, [props.account, props.api]);
+  }, [props.accountId, props.api]);
 
   return (
     <Box

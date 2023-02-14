@@ -3,12 +3,11 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import {
-  AccountBalanceQuery,
-  TransferTransaction,
+  TransactionId,
   Hbar,
-  PrivateKey,
-  AccountCreateTransaction,
   AccountUpdateTransaction,
+  TransferTransaction,
+  AccountId,
 } from "@hashgraph/sdk";
 import {
   AccountBalanceWallet,
@@ -74,28 +73,47 @@ const Account = (props) => {
   const stakeAccountRef = useRef();
 
   useEffect(() => {
+    const hashconnect = props.wallet[0];
+    const saveData = props.wallet[1];
+    console.log("-----------", saveData);
+    const provider = hashconnect.getProvider(
+      "testnet",
+      saveData.topic,
+      saveData.pairedAccount
+    );
     const fetchBalance = async () => {
-      const accountBalance = await new AccountBalanceQuery()
-        .setAccountId(props.account.accountId)
-        .execute(props.client);
+      let accountBalance = await provider.getAccountBalance(
+        saveData.pairedAccount
+      );
       setHbarBalance(accountBalance.hbars.toString());
     };
-    const privateKey = PrivateKey.fromString(props.account.privateKey);
-    setPrivateKey(privateKey.toStringRaw());
     fetchBalance();
-  }, [props.account, props.client, refreshCount, privateKey]);
+  }, [props.wallet, refreshCount, privateKey]);
 
   const stake = async () => {
     setBackdropOpen(true);
     try {
-      const txResponse = await new AccountUpdateTransaction()
-        .setAccountId(props.account.accountId)
-        .setStakedAccountId(stakeAccountRef.current?.value)
-        .execute(props.client);
+      const updateAccountTx = new AccountUpdateTransaction()
+        .setAccountId(props.wallet[1].pairedAccount)
+        .setStakedAccountId(stakeAccountRef.current?.value);
+      const transId = TransactionId.generate(props.wallet[1].pairedAccount);
+      updateAccountTx.setTransactionId(transId);
+      updateAccountTx.setNodeAccountIds([new AccountId(3)]);
+      updateAccountTx.freeze();
 
-      //Request the receipt of the transaction
-      const receipt = await txResponse.getReceipt(props.client);
-      console.log(receipt);
+      const response = await props.wallet[0].sendTransaction(
+        props.wallet[1].topic,
+        {
+          topic: props.wallet[1].topic,
+          byteArray: updateAccountTx.toBytes(),
+          metadata: {
+            accountToSign: props.wallet[1].pairedAccount,
+            returnTransaction: false,
+          },
+        }
+      );
+      console.log(response);
+
       setSnackbar({
         message: "Staking succeeded!",
         severity: "success",
@@ -117,21 +135,37 @@ const Account = (props) => {
     setBackdropOpen(true);
     setTransferModalOpen(false);
     try {
-      const sendHbar = await new TransferTransaction()
+      const sendHbarTx = await new TransferTransaction()
         .addHbarTransfer(
-          props.account.accountId,
+          props.wallet[1].pairedAccount,
           Hbar.from(-amountRef.current.value)
-        ) //Sending account
+        )
         .addHbarTransfer(
           accountRef.current.value,
           Hbar.from(amountRef.current.value)
-        ) //Receiving account
-        .execute(props.client);
+        );
+      const transId = TransactionId.generate(props.wallet[1].pairedAccount);
+      sendHbarTx.setTransactionId(transId);
+      sendHbarTx.setNodeAccountIds([new AccountId(3)]);
+      sendHbarTx.freeze();
 
-      const transactionReceipt = await sendHbar.getReceipt(props.client);
+      const response = await props.wallet[0].sendTransaction(
+        props.wallet[1].topic,
+        {
+          topic: props.wallet[1].topic,
+          byteArray: sendHbarTx.toBytes(),
+          metadata: {
+            accountToSign: props.wallet[1].pairedAccount,
+            returnTransaction: false,
+          },
+        }
+      );
+      console.log(response);
+
+      const transactionReceipt = response.receipt;
       console.log(
         "The transfer transaction from my account to the new account was: " +
-          transactionReceipt.status.toString()
+          transactionReceipt
       );
       setSnackbar({
         message: "Transaction succeeded!",
@@ -148,77 +182,6 @@ const Account = (props) => {
       });
     }
     setBackdropOpen(false);
-  };
-
-  const createAccount = async () => {
-    setBackdropOpen(true);
-    try {
-      let newAccountPrivateKey;
-      if (keyTypeRef.current.value === "ED25519") {
-        newAccountPrivateKey = await PrivateKey.generateED25519();
-      } else if (keyTypeRef.current.value === "ECDSA") {
-        newAccountPrivateKey = await PrivateKey.generateECDSA();
-      }
-      const newAccountPublicKey = newAccountPrivateKey.publicKey;
-      const createAccountTx = await new AccountCreateTransaction()
-        .setKey(newAccountPublicKey)
-        .setInitialBalance(Hbar.fromString(initBalanceRef.current?.value))
-        .execute(props.client);
-      console.log(createAccountTx.transactionHash.toString());
-      console.log(createAccountTx.transactionId.toString());
-      const getReceipt = await createAccountTx.getReceipt(props.client);
-      console.log(getReceipt);
-      const newAccountId = getReceipt.accountId;
-      const newAccount = {
-        name: accountNameRef.current?.value,
-        accountId: newAccountId.toString(),
-        privateKey: newAccountPrivateKey.toString(),
-        publicKey: newAccountPublicKey.toString(),
-      };
-      const accountList = [...props.accounts, newAccount];
-      props.setAccounts(accountList);
-      localStorage.setItem("accounts", JSON.stringify(accountList));
-      setSnackbar({
-        message: "A new account is created!",
-        severity: "success",
-        open: true,
-      });
-      setCreateAccountModalOpen(false);
-      setRefreshCount(refreshCount + 1);
-    } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Creating new account failed " + err.toString(),
-        severity: "error",
-        open: true,
-      });
-    }
-    setBackdropOpen(false);
-  };
-
-  const deleteAccount = () => {
-    try {
-      const currentAccounts = JSON.parse(localStorage.getItem("accounts"));
-      const filteredAccounts = currentAccounts.filter(
-        (account) => account.accountId !== props.account.accountId
-      );
-      props.changeAccount(filteredAccounts[0]);
-      props.setAccounts(filteredAccounts);
-      localStorage.setItem("accounts", JSON.stringify(filteredAccounts));
-
-      setSnackbar({
-        message: "Deleted account successfully",
-        severity: "success",
-        open: true,
-      });
-    } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Failed to delete account " + err.toString(),
-        severity: "error",
-        open: true,
-      });
-    }
   };
 
   const fetchAccount = async () => {
@@ -283,25 +246,25 @@ const Account = (props) => {
               target="_blank"
               rel="noreferrer"
               href={
-                "https://hashscan.io/#/testnet/account/" +
-                props.account.accountId
+                "https://hashscan.io/testnet/account/" +
+                props.wallet[1].pairedAccount
               }
             >
-              {props.account.accountId}
+              {props.wallet[1].pairedAccount}
             </a>
           </Typography>
           <Typography sx={{ fontSize: 16 }} color="text.secondary" gutterBottom>
-            <b>Public Key:</b> {props.account.publicKey}
+            <b>Public Key:</b>
           </Typography>
           <Typography sx={{ fontSize: 16 }} color="text.secondary" gutterBottom>
             <b>Private Key:</b> Der:
-            <Tooltip arrow title={props.account.privateKey}>
+            <Tooltip arrow title="PrivateKey">
               <IconButton>
                 <Key />
               </IconButton>
             </Tooltip>
             Raw:
-            <Tooltip arrow title={privateKey}>
+            <Tooltip arrow title="PrivateKey">
               <IconButton>
                 <Key />
               </IconButton>
@@ -322,30 +285,12 @@ const Account = (props) => {
           <Button
             variant="contained"
             component="label"
-            startIcon={<Add />}
-            color="secondary"
-            onClick={() => setCreateAccountModalOpen(true)}
-          >
-            Create Account
-          </Button>{" "}
-          <Button
-            variant="contained"
-            component="label"
             startIcon={<MoneyOff />}
             color="secondary"
             onClick={() => setStakeModalOpen(true)}
           >
             Stake
           </Button>
-          {!props.account.isMainAccount && (
-            <IconButton
-              color="error"
-              onClick={() => deleteAccount()}
-              style={{ float: "right" }}
-            >
-              <Delete />
-            </IconButton>
-          )}
         </CardContent>
       </Card>
 
@@ -402,73 +347,6 @@ const Account = (props) => {
         </Box>
       </Modal>
 
-      <Modal
-        open={createAccountModalOpen}
-        onClose={() => setCreateAccountModalOpen(false)}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                id="AccountName"
-                name="AccountName"
-                label="Account Name"
-                fullWidth
-                variant="standard"
-                inputRef={accountNameRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="InitialBalance"
-                name="InitialBalance"
-                label="Initial balance (Hbar)"
-                fullWidth
-                variant="standard"
-                inputRef={initBalanceRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <InputLabel id="key-type">Key Type</InputLabel>
-              <Select
-                labelId="demo-simple-select-label"
-                id="demo-simple-select"
-                label="KeyType"
-                defaultValue="ED25519"
-                inputRef={keyTypeRef}
-              >
-                <MenuItem value="ED25519">ED25519</MenuItem>
-                <MenuItem value="ECDSA">ECDSA</MenuItem>
-              </Select>
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Send />}
-                color="secondary"
-                onClick={() => {
-                  createAccount();
-                }}
-              >
-                Create
-              </Button>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Close />}
-                color="error"
-                style={{ float: "right" }}
-                onClick={() => setCreateAccountModalOpen(false)}
-              >
-                Close
-              </Button>
-            </Grid>
-          </Grid>
-        </Box>
-      </Modal>
       <br />
       <Modal
         open={stakeModalOpen}
