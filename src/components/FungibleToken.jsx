@@ -197,7 +197,7 @@ const FungibleToken = (props) => {
                   target="_blank"
                   rel="noreferrer"
                   href={
-                    "https://hashscan.io/#/testnet/token/" +
+                    "https://hashscan.io/testnet/token/" +
                     token.tokenId.toString()
                   }
                 >
@@ -389,7 +389,7 @@ const FungibleToken = (props) => {
                   target="_blank"
                   rel="noreferrer"
                   href={
-                    "https://hashscan.io/#/testnet/account/" + props.accountId
+                    "https://hashscan.io/testnet/account/" + props.accountId
                   }
                 >
                   {props.accountId}

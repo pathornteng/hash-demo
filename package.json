@@ -6,7 +6,7 @@
     "@emotion/react": "^11.9.0",
     "@emotion/styled": "^11.8.1",
     "@hashgraph/hethers": "^1.1.0",
-    "@hashgraph/sdk": "^2.13.0",
+    "@hashgraph/sdk": "^2.25.0",
     "@mui/icons-material": "^5.6.2",
     "@mui/material": "^5.6.2",
     "@mui/x-data-grid": "^5.10.0",

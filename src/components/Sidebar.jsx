@@ -63,7 +63,7 @@ const Sidebar = (props) => {
                     <a
                       target="_blank"
                       rel="noopener noreferrer"
-                      href={`https://hashscan.io/#/testnet/transaction/${tx.transaction_id}`}
+                      href={`https://hashscan.io/testnet/transaction/${tx.consensus_timestamp}`}
                     >
                       {tx.transaction_id}
                     </a>
