@@ -283,8 +283,7 @@ const Account = (props) => {
               target="_blank"
               rel="noreferrer"
               href={
-                "https://hashscan.io/#/testnet/account/" +
-                props.account.accountId
+                "https://hashscan.io/testnet/account/" + props.account.accountId
               }
             >
               {props.account.accountId}
