@@ -83,6 +83,17 @@ class MirrorNodeAPI {
       };
     }
   }
+
+  async getNft(tokenId, serial) {
+    try {
+      return await this.req.get(`api/v1/tokens/${tokenId}/nfts/${serial}`);
+    } catch (err) {
+      return {
+        status: 400,
+        err: err,
+      };
+    }
+  }
 }
 
 export default MirrorNodeAPI;

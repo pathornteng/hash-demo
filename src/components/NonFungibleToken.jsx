@@ -5,7 +5,6 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import {
   AccountBalanceQuery,
-  AccountInfoQuery,
   TokenCreateTransaction,
   TokenSupplyType,
   TokenType,
@@ -13,8 +12,6 @@ import {
   TokenAssociateTransaction,
   TransferTransaction,
   TokenMintTransaction,
-  TokenNftInfoQuery,
-  NftId,
 } from "@hashgraph/sdk";
 import {
   BrowseGallery,
@@ -59,6 +56,7 @@ const style = {
 };
 
 const NonFungibleToken = (props) => {
+  const mirrorNodeDelay = 5000;
   const [hbarBalance, setHbarBalance] = useState("0");
   const [tokens, setTokens] = useState([]);
   const [tokenInfo, setTokenInfo] = useState({});
@@ -94,16 +92,16 @@ const NonFungibleToken = (props) => {
         .execute(props.client);
       setHbarBalance(accountBalance.hbars.toString());
       const api = new MirrorNodeAPI();
-      const account = await new AccountInfoQuery()
-        .setAccountId(props.accountId)
-        .execute(props.client);
+      const resp = await api.getAccount(props.accountId);
+      const account = resp.data;
+      const tokens = account.balance.tokens;
       let tokenRelationships = [];
       let tokenInfo = {};
       setLoading(true);
-      for (const [tokenId, token] of account.tokenRelationships) {
-        const query = await api.getToken(tokenId);
-        tokenInfo[tokenId.toString()] = query.data;
-        console.log(tokenInfo[tokenId.toString()]);
+      for (const token of tokens) {
+        let query = await api.getToken(token.token_id);
+        query.data.balance = token.balance;
+        tokenInfo[token.token_id.toString()] = query.data;
         tokenRelationships.push(token);
       }
       setLoading(false);
@@ -119,20 +117,23 @@ const NonFungibleToken = (props) => {
     try {
       let tokenTransferTx = await new TransferTransaction()
         .addNftTransfer(
-          nft.nftId?.tokenId,
-          nft.nftId?.serial,
+          nft.token_id,
+          nft.serial_number,
           props.accountId,
           accountRef.current?.value
         )
         .freezeWith(props.client)
         .sign(sigKey);
-      await tokenTransferTx.execute(props.client);
+      const txResponse = await tokenTransferTx.execute(props.client);
+      await txResponse.getReceipt(props.client);
+      await delay(mirrorNodeDelay);
       setTransferModalOpen(false);
       setSnackbar({
         message: "NFT's transfered successfully",
         severity: "success",
         open: true,
       });
+      setRefreshCount(refreshCount + 1);
     } catch (err) {
       console.warn(err);
       setSnackbar({
@@ -148,12 +149,13 @@ const NonFungibleToken = (props) => {
     setBackdropOpen(true);
     try {
       let mintTx = await new TokenMintTransaction()
-        .setTokenId(selectedToken.tokenId)
+        .setTokenId(selectedToken.token_id)
         .setMetadata([Buffer.from(CIDRef.current?.value)])
         .freezeWith(props.client);
       let mintTxSign = await mintTx.sign(sigKey);
       let mintTxSubmit = await mintTxSign.execute(props.client);
       await mintTxSubmit.getReceipt(props.client);
+      await delay(mirrorNodeDelay);
       setSnackbar({
         message: "NFT is minted successfully",
         severity: "success",
@@ -174,14 +176,14 @@ const NonFungibleToken = (props) => {
 
   const getNft = async (token, index) => {
     try {
-      const nftId = new NftId(
-        token.tokenId,
+      const api = new MirrorNodeAPI();
+      const resp = await api.getNft(
+        token.token_id,
         parseInt(serialRefs.current[index]?.value)
       );
-      let nfts = await new TokenNftInfoQuery()
-        .setNftId(nftId)
-        .execute(props.client);
-      setNft(nfts[0]);
+      let nft = resp.data;
+      nft.metadata = atob(nft.metadata);
+      setNft(nft);
       setNftModalOpen(true);
     } catch (err) {
       console.warn(err);
@@ -206,11 +208,13 @@ const NonFungibleToken = (props) => {
 
       let associateTxSubmit = await associateTx.execute(props.client);
       await associateTxSubmit.getReceipt(props.client);
+      await delay(mirrorNodeDelay);
       setSnackbar({
         message: "Token association is created successfully",
         severity: "success",
         open: true,
       });
+      setRefreshCount(refreshCount + 1);
       setAssociateModalOpen(false);
     } catch (err) {
       console.warn(err);
@@ -243,8 +247,8 @@ const NonFungibleToken = (props) => {
       let tokenCreateSign = await tokenCreateTx.sign(sigKey);
       let tokenCreateSubmit = await tokenCreateSign.execute(props.client);
       let tokenCreateRx = await tokenCreateSubmit.getReceipt(props.client);
-      let tokenId = tokenCreateRx.tokenId;
-      await delay(10000);
+      let tokenId = tokenCreateRx.token_id;
+      await delay(mirrorNodeDelay);
       setSnackbar({
         open: true,
         message: "NFT is created successfully, tokenID: " + tokenId,
@@ -271,11 +275,11 @@ const NonFungibleToken = (props) => {
   const tokenList = tokens
     .filter(
       (token) =>
-        tokenInfo[token.tokenId.toString()].type === "NON_FUNGIBLE_UNIQUE"
+        tokenInfo[token.token_id.toString()].type === "NON_FUNGIBLE_UNIQUE"
     )
     .map((token, index) => {
       return (
-        <Grid item xs={6} key={token.tokenId.toString()}>
+        <Grid item xs={6} key={token.token_id?.toString()}>
           <Card sx={{ minWidth: 150 }}>
             <CardContent>
               <div>
@@ -285,29 +289,35 @@ const NonFungibleToken = (props) => {
                   rel="noreferrer"
                   href={
                     "https://hashscan.io/testnet/token/" +
-                    token.tokenId.toString()
+                    token.token_id?.toString()
                   }
                 >
-                  {token.tokenId.toString()}
+                  {token.token_id.toString()}
                 </a>
               </div>
               <div>
                 <b>Name:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.name?.toString()}
+                {tokenInfo[token.token_id.toString()]?.name?.toString()}
               </div>
               <div>
-                <b>Symbol:</b> {token.symbol.toString()}
+                <b>Symbol:</b>{" "}
+                {tokenInfo[token.token_id.toString()]?.symbol?.toString()}
               </div>
               <div>
-                <b>Balance:</b> {token.balance.toString()}
+                <b>Balance:</b>{" "}
+                {tokenInfo[token.token_id.toString()]?.balance?.toString()}
+              </div>
+              <div>
+                <b>Total Supply:</b>{" "}
+                {tokenInfo[token.token_id.toString()]?.total_supply?.toString()}
               </div>
               <div>
                 <b>IsDeleted:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.deleted?.toString()}
+                {tokenInfo[token.token_id.toString()]?.deleted?.toString()}
               </div>
               <div>
                 <b>TokenType:</b>{" "}
-                {tokenInfo[token.tokenId.toString()]?.type?.toString()}
+                {tokenInfo[token.token_id.toString()]?.type?.toString()}
               </div>
               <hr />
               <div>
@@ -331,7 +341,7 @@ const NonFungibleToken = (props) => {
                   View
                 </Button>{" "}
                 {tokenInfo[
-                  token.tokenId.toString()
+                  token.token_id.toString()
                 ]?.admin_key?.key?.toString() ===
                   PrivateKey.fromString(
                     props.privateKey
@@ -530,10 +540,10 @@ const NonFungibleToken = (props) => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <div>
-                <b>Token:</b> {nft?.nftId?.tokenId.toString()}
+                <b>Token:</b> {nft?.token_id?.toString()}
               </div>
               <div>
-                <b>Serial:</b> {nft?.nftId?.serial.toString()}
+                <b>Serial:</b> {nft?.serial_number?.toString()}
               </div>
             </Grid>
             <Grid item xs={12}>
@@ -669,25 +679,25 @@ const NonFungibleToken = (props) => {
         <DialogContent>
           <DialogContentText component={"span"} id="alert-dialog-description">
             <div>
-              <b>TokenID:</b> {nft.nftId?.tokenId?.toString()}
+              <b>TokenID:</b> {nft.token_id?.toString()}
             </div>
             <div>
-              <b>Serial:</b> {nft.nftId?.serial?.toString()}
+              <b>Serial:</b> {nft.serial_number?.toString()}
             </div>
             <div>
               <b>Create at:</b>{" "}
-              {new Date(nft.creationTime * 1000).toLocaleString()}
+              {new Date(nft.created_timestamp * 1000).toLocaleString()}
             </div>
             <div>
-              <b>Owner AcccountID:</b> {nft.accountId?.toString()}
+              <b>Owner AcccountID:</b> {nft.account_id?.toString()}
             </div>
             <div style={{ overflowWrap: "break-word" }}>
-              <b>Metadata:</b> {new TextDecoder().decode(nft.metadata)}
+              <b>Metadata:</b> {nft.metadata}
             </div>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          {props.accountId === nft.accountId?.toString() && (
+          {props.accountId === nft.account_id?.toString() && (
             <Button
               variant="contained"
               component="label"
