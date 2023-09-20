@@ -10,6 +10,7 @@ import {
   TokenType,
   PrivateKey,
   TokenAssociateTransaction,
+  TokenDissociateTransaction,
   TransferTransaction,
   TokenMintTransaction,
 } from "@hashgraph/sdk";
@@ -21,6 +22,7 @@ import {
   Create,
   Key,
   Link,
+  LinkOff,
   Send,
 } from "@mui/icons-material";
 import {
@@ -56,7 +58,7 @@ const style = {
 };
 
 const NonFungibleToken = (props) => {
-  const mirrorNodeDelay = 5000;
+  const mirrorNodeDelay = 4000;
   const [hbarBalance, setHbarBalance] = useState("0");
   const [tokens, setTokens] = useState([]);
   const [tokenInfo, setTokenInfo] = useState({});
@@ -64,6 +66,7 @@ const NonFungibleToken = (props) => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [associateModalOpen, setAssociateModalOpen] = useState(false);
+  const [dissociateModalOpen, setDissociateModalOpen] = useState(false);
   const [mintModalOpen, setMintModalOpen] = useState(false);
   const [nftModalOpen, setNftModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -129,7 +132,7 @@ const NonFungibleToken = (props) => {
       await delay(mirrorNodeDelay);
       setTransferModalOpen(false);
       setSnackbar({
-        message: "NFT's transfered successfully",
+        message: "NFT's transferred successfully",
         severity: "success",
         open: true,
       });
@@ -193,6 +196,41 @@ const NonFungibleToken = (props) => {
         open: true,
       });
     }
+  };
+
+  const dissociate = async (token) => {
+    nft.token_id = token.token_id;
+    setNft(nft);
+    setDissociateModalOpen(true);
+  };
+
+  const dissociateToken = async () => {
+    setBackdropOpen(true);
+    try {
+      let dissociateTx = await new TokenDissociateTransaction()
+        .setAccountId(props.accountId)
+        .setTokenIds([nft.token_id])
+        .freezeWith(props.client)
+        .sign(sigKey);
+      let dissociateTxSubmit = await dissociateTx.execute(props.client);
+      await dissociateTxSubmit.getReceipt(props.client);
+      await delay(mirrorNodeDelay);
+      setSnackbar({
+        message: "Token dissociation successful",
+        severity: "success",
+        open: true,
+      });
+      setRefreshCount(refreshCount + 1);
+      setDissociateModalOpen(false);
+    } catch (err) {
+      console.warn(err);
+      setSnackbar({
+        message: "Dissociation failed " + err.toString(),
+        severity: "error",
+        open: true,
+      });
+    }
+    setBackdropOpen(false);
   };
 
   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -319,6 +357,17 @@ const NonFungibleToken = (props) => {
                 <b>TokenType:</b>{" "}
                 {tokenInfo[token.token_id.toString()]?.type?.toString()}
               </div>
+              <div>
+                <b>Treasury Account:</b>{" "}
+                {tokenInfo[
+                  token.token_id.toString()
+                ]?.treasury_account_id?.toString()}
+                {tokenInfo[
+                  token.token_id.toString()
+                ]?.treasury_account_id?.toString() === props.accountId && (
+                  <strong> (it's you!)</strong>
+                )}
+              </div>
               <hr />
               <div>
                 <TextField
@@ -358,6 +407,22 @@ const NonFungibleToken = (props) => {
                     }}
                   >
                     Mint
+                  </Button>
+                )}{" "}
+                {((tokenInfo[
+                  token.token_id.toString()
+                ]?.treasury_account_id?.toString() !== props.accountId &&
+                  tokenInfo[token.token_id.toString()]?.balance === 0) ||
+                  tokenInfo[token.token_id.toString()]?.deleted) && (
+                  <Button
+                    variant="contained"
+                    component="label"
+                    startIcon={<LinkOff />}
+                    color="secondary"
+                    style={{ float: "right" }}
+                    onClick={() => dissociate(token)}
+                  >
+                    Dissociate
                   </Button>
                 )}
               </div>
@@ -607,7 +672,7 @@ const NonFungibleToken = (props) => {
                 color="secondary"
                 onClick={associateToken}
               >
-                Link
+                Associate
               </Button>
               <Button
                 variant="contained"
@@ -623,6 +688,46 @@ const NonFungibleToken = (props) => {
           </Grid>
         </Box>
       </Modal>
+
+      <Dialog
+        open={dissociateModalOpen}
+        onClose={() => setDissociateModalOpen(false)}
+        aria-labelledby="modal-modal-title"
+        aria-describedby="modal-modal-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Are you sure you want to dissociate the token?"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText component={"span"} id="alert-dialog-description">
+            <div>
+              <b>TokenID:</b> {nft.token_id?.toString()}
+            </div>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            component="label"
+            startIcon={<LinkOff />}
+            color="secondary"
+            style={{ float: "left" }}
+            onClick={dissociateToken}
+          >
+            Dissociate
+          </Button>
+          <Button
+            variant="contained"
+            component="label"
+            startIcon={<Close />}
+            color="error"
+            style={{ float: "right" }}
+            onClick={() => setDissociateModalOpen(false)}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Modal
         open={mintModalOpen}
