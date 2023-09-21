@@ -6,15 +6,11 @@ HashDemo is a demonstration application built for [Hedera Network](https://hed
 
 ## Prerequisite
 
-```bash
-node
-```
+NodeJS `>= 18`
 
 ## Install
 
 ```bash
-git clone git@github.com:pathornteng/hash-demo.git
-cd hash-demo
 npm install
 ```
 
