@@ -209,9 +209,9 @@ const NonFungibleToken = (props) => {
     try {
       let dissociateTx = await new TokenDissociateTransaction()
         .setAccountId(props.accountId)
-        .setTokenIds([nft.token_id])
-        .freezeWith(props.client)
-        .sign(sigKey);
+        .setTokenIds([nft.token_id]);
+      //.freezeWith(props.client)
+      //.sign(sigKey);
       let dissociateTxSubmit = await dissociateTx.execute(props.client);
       await dissociateTxSubmit.getReceipt(props.client);
       await delay(mirrorNodeDelay);
@@ -240,9 +240,9 @@ const NonFungibleToken = (props) => {
     try {
       let associateTx = await new TokenAssociateTransaction()
         .setAccountId(props.accountId)
-        .setTokenIds([tokenIdRef.current?.value])
-        .freezeWith(props.client)
-        .sign(sigKey);
+        .setTokenIds([tokenIdRef.current?.value]);
+      //.freezeWith(props.client)
+      //.sign(sigKey);
 
       let associateTxSubmit = await associateTx.execute(props.client);
       await associateTxSubmit.getReceipt(props.client);
@@ -348,6 +348,10 @@ const NonFungibleToken = (props) => {
               <div>
                 <b>Total Supply:</b>{" "}
                 {tokenInfo[token.token_id.toString()]?.total_supply?.toString()}
+              </div>
+              <div>
+                <b>Max Supply:</b>{" "}
+                {tokenInfo[token.token_id.toString()]?.max_supply?.toString()}
               </div>
               <div>
                 <b>IsDeleted:</b>{" "}
