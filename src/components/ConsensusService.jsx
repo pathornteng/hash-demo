@@ -215,6 +215,7 @@ const ConsensusService = (props) => {
                 label="Send message to the topic"
                 fullWidth
                 variant="standard"
+                multiline
                 inputRef={inputRef}
                 focused
               />
