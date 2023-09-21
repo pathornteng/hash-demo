@@ -87,8 +87,8 @@ const SmartContract = (props) => {
         .setGas(100000)
         .setFunction("retrieve")
         .setMaxQueryPayment(new Hbar(1));
-      const contractQuerySubmit = await contractQueryTx.execute(props.client);
-      const contractQueryResult = contractQuerySubmit.getUint256(0);
+      const transactionResult = await contractQueryTx.execute(props.client);
+      const contractQueryResult = transactionResult.getUint256(0);
       setQueryResult(contractQueryResult);
       setSnackbar({
         message: "Called the contract successfully",
