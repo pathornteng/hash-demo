@@ -1,27 +1,57 @@
-# Project summary
+# HashDemo
 
-HashDemo is a demonstration application built for [Hedera Network](https://hedera.com). It's designed and created to demonstrate the capabilities and services offered by the network. The services include [Hedera Token Service](https://hedera.com/token-service), [Hedera Consensus Service](https://hedera.com/consensus-service), [Hedera File Service](https://docs.hedera.com/guides/docs/sdks/file-storage), and [Hedera Smart Contract Service](https://hedera.com/smart-contract). HashDemo also demonstrates how applications can utilize the MirrorNode api and hashscan.io built by Swirds Labs to gather transaction history and state from Hedera Network.
+**HashDemo** is a demonstration application built for the [Hedera Network](https://hedera.com). It showcases the core capabilities and services offered by the Hedera ecosystem, including:
 
-[Live Demo](https://www.hashdemo.com/)
+- [Hedera Token Service (HTS)](https://hedera.com/token-service)
+- [Hedera Consensus Service (HCS)](https://hedera.com/consensus-service)
+- [Hedera File Service (HFS)](https://docs.hedera.com/guides/docs/sdks/file-storage)
+- [Hedera Smart Contract Service (HSCS)](https://hedera.com/smart-contract)
 
-## Prerequisite
+It also demonstrates how to integrate with:
+- [Mirror Node APIs](https://docs.hedera.com/hedera/mirror-nodes) to query transaction history and network state
+- [Hashscan.io](https://hashscan.io) (built by Swirlds Labs) for network data exploration
 
-NodeJS `>= 18`
+🔗 **[Live Demo](https://www.hashdemo.com/)**
 
-## Install
+---
+
+## 📋 Prerequisites
+
+- [Node.js](https://nodejs.org/) `>= 18`
+
+---
+
+## ⚙️ Installation
 
 ```bash
 npm install
 ```
 
-## Run
+---
+
+## 🚀 Running the App
 
 ```bash
 npm start
 ```
 
-## Build
+---
+
+## 🏗️ Build for Production
 
 ```bash
 npm run build
 ```
+
+---
+
+## 📄 License
+
+This project is provided for demonstration purposes. Please review the license terms included in the repository before use.
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!  
+Feel free to open an [issue](../../issues) or submit a [pull request](../../pulls).
