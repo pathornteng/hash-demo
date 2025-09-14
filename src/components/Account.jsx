@@ -156,7 +156,7 @@ const Account = (props) => {
       let newAccountPrivateKey;
       if (keyTypeRef.current.value === "ED25519") {
         newAccountPrivateKey = await PrivateKey.generateED25519();
-      } else if (keyTypeRef.current.value === "ECDSA") {
+      } else if (keyTypeRef.current.value === "SECP256K1") {
         newAccountPrivateKey = await PrivateKey.generateECDSA();
       }
       const newAccountPublicKey = newAccountPrivateKey.publicKey;
@@ -439,7 +439,7 @@ const Account = (props) => {
                 inputRef={keyTypeRef}
               >
                 <MenuItem value="ED25519">ED25519</MenuItem>
-                <MenuItem value="ECDSA">ECDSA</MenuItem>
+                <MenuItem value="SECP256K1">SECP256K1</MenuItem>
               </Select>
             </Grid>
             <Grid item xs={12}>

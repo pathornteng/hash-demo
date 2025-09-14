@@ -29,18 +29,18 @@ const ConsensusService = (props) => {
     open: false,
   });
   const [backdropOpen, setBackdropOpen] = useState(false);
-  const [topicId, setTopicId] = useState(null);
+  const [topicId, setTopicId] = useState("");
   const [messages, setMessages] = useState([]);
   const inputRef = useRef();
   const topicIdRef = useRef();
 
   const subscribeTopic = async () => {
+    if (!topicIdRef.current || topicIdRef.current.value === "") return;
     setBackdropOpen(true);
     try {
-      if (!topicIdRef.current) return;
       setTopicId(topicIdRef.current.value);
       const api = new MirrorNodeAPI();
-      const response = await api.getTopicMessages(topicId.toString());
+      const response = await api.getTopicMessages(topicIdRef.current.value);
       setMessages(response.data.messages);
     } catch (err) {
       console.warn("Subscribe topic error", err);
@@ -65,12 +65,12 @@ const ConsensusService = (props) => {
       const receipt = await txResponse.getReceipt(props.client);
       //Get the topic ID
       setTopicId(receipt.topicId);
+      topicIdRef.current.value = receipt.topicId?.toString();
       setSnackbar({
-        message: "Create topic success " + receipt.tokenId,
+        message: "Create topic success " + topicIdRef.current.value,
         severity: "success",
         open: true,
       });
-      topicIdRef.current.value = receipt.topicId?.toString();
     } catch (err) {
       console.warn("Create topic error", err);
       setSnackbar({
@@ -215,6 +215,7 @@ const ConsensusService = (props) => {
                 label="Send message to the topic"
                 fullWidth
                 variant="standard"
+                multiline
                 inputRef={inputRef}
                 focused
               />

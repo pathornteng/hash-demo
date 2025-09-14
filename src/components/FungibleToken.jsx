@@ -9,6 +9,7 @@ import {
   TokenType,
   PrivateKey,
   TokenAssociateTransaction,
+  TokenDissociateTransaction,
   TokenDeleteTransaction,
   TransferTransaction,
   TokenMintTransaction,
@@ -20,6 +21,7 @@ import {
   Delete,
   Key,
   Link,
+  LinkOff,
   MonetizationOn,
   Money,
   Send,
@@ -52,7 +54,7 @@ const style = {
 };
 
 const FungibleToken = (props) => {
-  const mirrorNodeDelay = 5000;
+  const mirrorNodeDelay = 4000;
   const [hbarBalance, setHbarBalance] = useState("0");
   const [tokens, setTokens] = useState([]);
   const [tokenInfo, setTokenInfo] = useState({});
@@ -198,7 +200,6 @@ const FungibleToken = (props) => {
         open: true,
       });
     }
-
     setBackdropOpen(false);
   };
 
@@ -242,47 +243,80 @@ const FungibleToken = (props) => {
                 <b>TokenType:</b>{" "}
                 {tokenInfo[token.token_id.toString()]?.type?.toString()}
               </div>
-              <hr />
               <div>
-                <Button
-                  variant="contained"
-                  component="label"
-                  startIcon={<Send />}
-                  color="secondary"
-                  onClick={() => {
-                    setTransferModalOpen(true);
-                    setSelectedToken(token);
-                  }}
-                >
-                  Transfer
-                </Button>{" "}
+                <b>Treasury Account:</b>{" "}
+                {tokenInfo[
+                  token.token_id.toString()
+                ]?.treasury_account_id?.toString()}
+                {tokenInfo[
+                  token.token_id.toString()
+                ]?.treasury_account_id?.toString() === props.accountId && (
+                  <strong> (it's you!)</strong>
+                )}
+              </div>
+              <div>
+                <hr />
+                {!tokenInfo[token.token_id.toString()]?.deleted && (
+                  <Button
+                    variant="contained"
+                    component="label"
+                    startIcon={<Send />}
+                    color="secondary"
+                    onClick={() => {
+                      setTransferModalOpen(true);
+                      setSelectedToken(token);
+                    }}
+                  >
+                    Transfer
+                  </Button>
+                )}{" "}
                 {props.publicKey.includes(
                   tokenInfo[
                     token.token_id.toString()
                   ]?.admin_key?.key?.toString()
-                ) && (
+                ) &&
+                  !tokenInfo[token.token_id.toString()]?.deleted && (
+                    <span>
+                      <Button
+                        variant="contained"
+                        component="label"
+                        startIcon={<Money />}
+                        color="secondary"
+                        onClick={() => {
+                          setSelectedToken(token);
+                          setMintModalOpen(true);
+                        }}
+                      >
+                        Mint
+                      </Button>{" "}
+                      <IconButton
+                        color="error"
+                        onClick={() => deleteToken(token)}
+                        style={{ float: "right" }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </span>
+                  )}{" "}
+                {(tokenInfo[token.token_id.toString()]?.deleted ||
+                  (tokenInfo[
+                    token.token_id.toString()
+                  ]?.treasury_account_id?.toString() !== props.accountId &&
+                    tokenInfo[token.token_id.toString()]?.balance === 0)) && (
                   <span>
                     <Button
                       variant="contained"
                       component="label"
-                      startIcon={<Money />}
+                      startIcon={<LinkOff />}
                       color="secondary"
-                      onClick={() => {
-                        setSelectedToken(token);
-                        setMintModalOpen(true);
-                      }}
-                    >
-                      Mint
-                    </Button>{" "}
-                    <IconButton
-                      color="error"
-                      onClick={() => deleteToken(token)}
                       style={{ float: "right" }}
+                      onClick={() => dissociateToken(token)}
                     >
-                      <Delete />
-                    </IconButton>
+                      Dissociate
+                    </Button>
                   </span>
-                )}
+                )}{" "}
+                <br/>
               </div>
             </CardContent>
           </Card>
@@ -301,6 +335,7 @@ const FungibleToken = (props) => {
 
       let associateTxSubmit = await associateTx.execute(props.client);
       await associateTxSubmit.getReceipt(props.client);
+      await delay(mirrorNodeDelay);
       setSnackbar({
         message: "Associate token success!",
         severity: "success",
@@ -312,6 +347,34 @@ const FungibleToken = (props) => {
       console.warn(err);
       setSnackbar({
         message: "Failed to associate token " + err.toString(),
+        severity: "error",
+        open: true,
+      });
+    }
+    setBackdropOpen(false);
+  };
+
+  const dissociateToken = async (token) => {
+    setBackdropOpen(true);
+    try {
+      let dissociateTx = await new TokenDissociateTransaction()
+        .setAccountId(props.accountId)
+        .setTokenIds([token.token_id.toString()])
+        .freezeWith(props.client)
+        .sign(sigKey);
+      let dissociateTxSubmit = await dissociateTx.execute(props.client);
+      await dissociateTxSubmit.getReceipt(props.client);
+      await delay(mirrorNodeDelay);
+      setSnackbar({
+        message: "Token dissociation successful",
+        severity: "success",
+        open: true,
+      });
+      setRefreshCount(refreshCount + 1);
+    } catch (err) {
+      console.warn(err);
+      setSnackbar({
+        message: "Dissociation failed " + err.toString(),
         severity: "error",
         open: true,
       });
@@ -635,7 +698,7 @@ const FungibleToken = (props) => {
                 color="secondary"
                 onClick={associateToken}
               >
-                Link
+                Associate
               </Button>
               <Button
                 variant="contained"
