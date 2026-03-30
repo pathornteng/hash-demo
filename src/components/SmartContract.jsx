@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { Code, CloudUpload, Edit, QueryStats } from "@mui/icons-material";
 import {
   Alert,
@@ -15,7 +16,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useState, useRef } from "react";
 import {
   ContractCallQuery,
   ContractCreateTransaction,
@@ -24,6 +24,10 @@ import {
   FileCreateTransaction,
   Hbar,
 } from "@hashgraph/sdk";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import solidity from "react-syntax-highlighter/dist/esm/languages/prism/solidity";
+import vscDarkPlus from "react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus";
+SyntaxHighlighter.registerLanguage("solidity", solidity);
 
 const BYTECODE =
   "6080604052348015600e575f5ffd5b506101298061001c5f395ff3fe6080604052348015600e575f5ffd5b50600436106030575f3560e01c806360fe47b11460345780636d4ce63c14604c575b5f5ffd5b604a60048036038101906046919060a9565b6066565b005b6052606f565b604051605d919060dc565b60405180910390f35b805f8190555050565b5f5f54905090565b5f5ffd5b5f819050919050565b608b81607b565b81146094575f5ffd5b50565b5f8135905060a3816084565b92915050565b5f6020828403121560bb5760ba6077565b5b5f60c6848285016097565b91505092915050565b60d681607b565b82525050565b5f60208201905060ed5f83018460cf565b9291505056fea26469706673582212201038ddbc58e342ab090234706a02d89156409ec2d521d68fd639ba0fda2997bb64736f6c634300081f0033";
@@ -191,66 +195,26 @@ const SmartContract = (props) => {
             sx={{ border: "1px solid", borderColor: "divider", height: "100%" }}
           >
             {/* Code block header */}
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1,
-                borderBottom: "1px solid",
-                borderColor: "divider",
-                backgroundColor: "#fafafa",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    backgroundColor: "#5D6DD8",
-                  }}
-                />
-                <Typography
-                  sx={{
-                    fontSize: "0.8rem",
-                    fontFamily: "monospace",
-                    color: "text.secondary",
-                    fontWeight: 600,
-                  }}
-                >
-                  SimpleStorage.sol
-                </Typography>
-              </Box>
-              <Chip
-                label="Solidity 0.8"
-                size="small"
-                sx={{
-                  fontSize: "0.68rem",
-                  height: 20,
-                  backgroundColor: "#eef0fb",
-                  color: "#5D6DD8",
-                  fontWeight: 600,
-                }}
-              />
+            <Box sx={{ px: 2, py: 1.25, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "#fafafa", display: "flex", alignItems: "center", gap: 1 }}>
+              <Code sx={{ fontSize: 16, color: "text.secondary" }} />
+              <Typography variant="subtitle2" fontWeight={700}>SimpleStorage.sol</Typography>
+              <Box sx={{ flex: 1 }} />
+              <Chip label="Solidity 0.8" size="small" sx={{ fontSize: "0.68rem", height: 18 }} />
+              <Chip label="Smart Contract" size="small" sx={{ fontSize: "0.68rem", height: 18, backgroundColor: "#f0f2ff", color: "#5D6DD8" }} />
             </Box>
 
             {/* Source */}
-            <Box
-              component="pre"
-              sx={{
-                backgroundColor: "#1a1a2e",
-                color: "#e2e8f0",
-                m: 0,
-                p: 2.5,
-                fontFamily: "'Fira Code', 'Courier New', monospace",
-                fontSize: "0.8rem",
-                lineHeight: 1.75,
-                overflowX: "auto",
-              }}
-            >
-              {SOLIDITY_SOURCE}
+            <Box sx={{ height: 400, minHeight: 120, maxHeight: "80vh", resize: "vertical", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <SyntaxHighlighter
+                language="solidity"
+                style={vscDarkPlus}
+                showLineNumbers
+                lineNumberStyle={{ color: "#45475a", minWidth: 36, paddingRight: 12, userSelect: "none", fontSize: "0.75rem" }}
+                customStyle={{ margin: 0, padding: "12px 16px", fontSize: "0.8rem", lineHeight: 1.75, flex: 1, overflowY: "auto", overflowX: "auto", height: "100%", background: "#1e1e1e", borderRadius: 0 }}
+                codeTagProps={{ style: { fontFamily: "'Fira Code', 'Courier New', monospace" } }}
+              >
+                {SOLIDITY_SOURCE}
+              </SyntaxHighlighter>
             </Box>
           </Card>
         </Grid>

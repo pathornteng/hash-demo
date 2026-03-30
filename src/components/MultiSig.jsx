@@ -575,7 +575,7 @@ const MultiSig = (props) => {
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                 <Link
-                  href={`https://hashscan.io/testnet/transaction/${encodeURIComponent(execResult.txId)}`}
+                  href={`https://hashscan.io/testnet/transaction/${execResult.txId.replace("@", "-").replace(/\.(\d{9})$/, "-$1")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{ color: ACCENT, fontFamily: "monospace", fontSize: 13, wordBreak: "break-all" }}

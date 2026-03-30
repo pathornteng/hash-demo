@@ -1,5 +1,6 @@
 import {
   AccountBalanceWallet,
+  Alarm,
   CalendarMonth,
   Category,
   Code,
@@ -34,7 +35,8 @@ const navItems = [
   { to: "/smart-contract", icon: <Code fontSize="small" />, label: "Smart Contract" },
   { to: "/file", icon: <FileOpen fontSize="small" />, label: "File Service" },
   { to: "/multisig", icon: <Lock fontSize="small" />, label: "Multi-Signature" },
-  { to: "/scheduled", icon: <CalendarMonth fontSize="small" />, label: "Scheduled Tx" },
+  { to: "/scheduled", icon: <CalendarMonth fontSize="small" />, label: "Scheduled Transaction" },
+  { to: "/scheduled-counter", icon: <Alarm fontSize="small" />, label: "Scheduled SmartContract" },
   { to: "/network", icon: <Storage fontSize="small" />, label: "Network" },
 ];
 

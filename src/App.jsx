@@ -17,6 +17,7 @@ import FungibleToken from "./components/FungibleToken";
 import NonFungibleToken from "./components/NonFungibleToken";
 import MultiSig from "./components/MultiSig";
 import ScheduledTransaction from "./components/ScheduledTransaction";
+import ScheduledCounter from "./components/ScheduledCounter";
 import MirrorNodeAPI from "./api/mirror-node-api";
 import "./App.css";
 
@@ -166,6 +167,15 @@ const App = () => {
                   path="/multisig"
                   element={
                     <MultiSig
+                      account={account}
+                      client={client}
+                    />
+                  }
+                />
+                <Route
+                  path="/scheduled-counter"
+                  element={
+                    <ScheduledCounter
                       account={account}
                       client={client}
                     />
