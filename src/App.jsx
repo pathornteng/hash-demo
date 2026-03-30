@@ -15,6 +15,8 @@ import { Client, PrivateKey } from "@hashgraph/sdk";
 import React, { useEffect, useState } from "react";
 import FungibleToken from "./components/FungibleToken";
 import NonFungibleToken from "./components/NonFungibleToken";
+import MultiSig from "./components/MultiSig";
+import ScheduledTransaction from "./components/ScheduledTransaction";
 import MirrorNodeAPI from "./api/mirror-node-api";
 import "./App.css";
 
@@ -156,6 +158,25 @@ const App = () => {
                       accountId={account.accountId}
                       privateKey={account.privateKey}
                       publicKey={account.publicKey}
+                      client={client}
+                    />
+                  }
+                />
+                <Route
+                  path="/multisig"
+                  element={
+                    <MultiSig
+                      account={account}
+                      client={client}
+                    />
+                  }
+                />
+                <Route
+                  path="/scheduled"
+                  element={
+                    <ScheduledTransaction
+                      account={account}
+                      accounts={accounts}
                       client={client}
                     />
                   }

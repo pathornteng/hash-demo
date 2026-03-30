@@ -1,12 +1,15 @@
 import {
   AccountBalanceWallet,
+  CalendarMonth,
   Category,
   Code,
   CurrencyExchange,
   FileOpen,
+  Lock,
   Storage,
   Topic,
 } from "@mui/icons-material";
+
 import {
   Box,
   Card,
@@ -20,7 +23,7 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const navItems = [
@@ -30,11 +33,47 @@ const navItems = [
   { to: "/non-fungible-token", icon: <Category fontSize="small" />, label: "NFT" },
   { to: "/smart-contract", icon: <Code fontSize="small" />, label: "Smart Contract" },
   { to: "/file", icon: <FileOpen fontSize="small" />, label: "File Service" },
+  { to: "/multisig", icon: <Lock fontSize="small" />, label: "Multi-Signature" },
+  { to: "/scheduled", icon: <CalendarMonth fontSize="small" />, label: "Scheduled Tx" },
   { to: "/network", icon: <Storage fontSize="small" />, label: "Network" },
 ];
 
+const MIN_WIDTH = 260;
+const MAX_WIDTH = 600;
+
 const Sidebar = (props) => {
   const [txList, setTxList] = useState([]);
+  const [width, setWidth] = useState(260);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  const onMouseDown = (e) => {
+    dragging.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e) => {
+      if (!dragging.current) return;
+      const delta = e.clientX - startX.current;
+      setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta)));
+    };
+    const onMouseUp = () => {
+      dragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -84,8 +123,10 @@ const Sidebar = (props) => {
       sx={{
         display: { xs: "none", sm: "flex" },
         flexDirection: "column",
-        minWidth: 220,
-        width: 220,
+        position: "relative",
+        width,
+        minWidth: width,
+        flexShrink: 0,
         pt: 2,
         pb: 2,
         pl: 1,
@@ -94,6 +135,21 @@ const Sidebar = (props) => {
         minHeight: "calc(100vh - 64px)",
       }}
     >
+      {/* Drag handle */}
+      <Box
+        onMouseDown={onMouseDown}
+        sx={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: 4,
+          cursor: "col-resize",
+          zIndex: 10,
+          "&:hover": { backgroundColor: "#5D6DD8", opacity: 0.4 },
+          transition: "background-color 0.15s",
+        }}
+      />
       {/* Navigation */}
       <Typography
         variant="caption"

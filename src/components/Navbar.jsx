@@ -131,7 +131,7 @@ const Navbar = (props) => {
             sx={{ flexGrow: 1, display: { xs: "none", sm: "block" }, ml: 1 }}
           >
             <NavLink style={{ color: "inherit", textDecoration: "none" }} to="/">
-              Hash Demo
+              Hash Demo 2.0
             </NavLink>
           </Typography>
 
