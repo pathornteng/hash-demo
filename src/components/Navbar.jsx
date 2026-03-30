@@ -1,16 +1,16 @@
 import {
   AppBar,
+  Box,
   FormControl,
   IconButton,
+  InputBase,
   MenuItem,
   Select,
   Toolbar,
   Typography,
 } from "@mui/material";
-import { Box } from "@mui/system";
-import InputBase from "@mui/material/InputBase";
-import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
+import MenuIcon from "@mui/icons-material/Menu";
 import { styled, alpha } from "@mui/material/styles";
 import React, { useRef } from "react";
 import { NavLink } from "react-router-dom";
@@ -18,42 +18,35 @@ import { NavLink } from "react-router-dom";
 const Search = styled("div")(({ theme }) => ({
   position: "relative",
   borderRadius: theme.shape.borderRadius,
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  backgroundColor: alpha(theme.palette.common.white, 0.1),
+  border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
   "&:hover": {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    backgroundColor: alpha(theme.palette.common.white, 0.18),
   },
-  marginLeft: 0,
-  width: "100%",
-  [theme.breakpoints.up("sm")]: {
-    marginLeft: theme.spacing(1),
-    width: "auto",
-  },
+  marginLeft: theme.spacing(1),
+  width: "auto",
 }));
 
 const SearchIconWrapper = styled("div")(({ theme }) => ({
-  padding: theme.spacing(0, 2),
+  padding: theme.spacing(0, 1.5),
   height: "100%",
   position: "absolute",
   pointerEvents: "none",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  opacity: 0.6,
 }));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
   color: "inherit",
   "& .MuiInputBase-input": {
-    padding: theme.spacing(1, 1, 1, 0),
-    // vertical padding + font size from searchIcon
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    padding: theme.spacing(0.75, 1, 0.75, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(3.5)})`,
+    fontSize: "0.85rem",
+    width: "22ch",
+    "&:focus": { width: "28ch" },
     transition: theme.transitions.create("width"),
-    width: "100%",
-    [theme.breakpoints.up("sm")]: {
-      width: "30ch",
-      "&:focus": {
-        width: "30ch",
-      },
-    },
   },
 }));
 
@@ -63,7 +56,6 @@ const Navbar = (props) => {
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
-    console.log(mobileOpen);
   };
 
   const handleAccountChange = (e) => {
@@ -86,28 +78,13 @@ const Navbar = (props) => {
 
       if (queryArray.length === 1) {
         resp = await props.api.getAccount(query);
-        if (resp.status === 200) {
-          openLink(`https://hashscan.io/testnet/account/${query}`);
-          return;
-        }
-
+        if (resp.status === 200) { openLink(`https://hashscan.io/testnet/account/${query}`); return; }
         resp = await props.api.getToken(query);
-        if (resp.status === 200) {
-          openLink(`https://hashscan.io/testnet/token/${query}`);
-          return;
-        }
-
+        if (resp.status === 200) { openLink(`https://hashscan.io/testnet/token/${query}`); return; }
         resp = await props.api.getTopic(query);
-        if (resp.status === 200) {
-          openLink(`https://hashscan.io/testnet/topic/${query}`);
-          return;
-        }
-
+        if (resp.status === 200) { openLink(`https://hashscan.io/testnet/topic/${query}`); return; }
         resp = await props.api.getContract(query);
-        if (resp.status === 200) {
-          openLink(`https://hashscan.io/testnet/contract/${query}`);
-          return;
-        }
+        if (resp.status === 200) { openLink(`https://hashscan.io/testnet/contract/${query}`); return; }
       }
 
       if (queryArray.length > 1) {
@@ -116,71 +93,69 @@ const Navbar = (props) => {
       }
 
       resp = await props.api.getTransaction(query);
-      if (resp.status === 200) {
-        openLink(`https://hashscan.io/testnet/transaction/${query}`);
-        return;
-      }
+      if (resp.status === 200) { openLink(`https://hashscan.io/testnet/transaction/${query}`); return; }
     }
   };
 
-  const accountList = props.accounts.map((account, index) => {
-    return (
-      <MenuItem key={account.accountId} value={account.accountId}>
-        {`[${account.name}] - ${account.accountId}`}
-      </MenuItem>
-    );
-  });
+  const accountList = props.accounts?.map((account) => (
+    <MenuItem key={account.accountId} value={account.accountId}>
+      {`[${account.name}] ${account.accountId}`}
+    </MenuItem>
+  ));
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
+      <AppBar position="static" elevation={0} sx={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <Toolbar sx={{ gap: 1 }}>
           <IconButton
             size="large"
             edge="start"
             color="inherit"
             aria-label="open drawer"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: "none" } }}
+            sx={{ mr: 1, display: { sm: "none" } }}
           >
             <MenuIcon />
           </IconButton>
+
           <img
-            style={{ height: "64px" }}
+            style={{ height: "48px" }}
             alt="Logo"
             src={process.env.PUBLIC_URL + "/favicon.png"}
           />
+
           <Typography
-            variant="h6"
+            variant="subtitle1"
+            fontWeight={700}
             noWrap
-            component="div"
-            sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }}
-            style={{ marginLeft: 10 }}
+            sx={{ flexGrow: 1, display: { xs: "none", sm: "block" }, ml: 1 }}
           >
-            <NavLink
-              style={{ color: "inherit", textDecoration: "inherit" }}
-              to="/"
-            >
-              Demo
+            <NavLink style={{ color: "inherit", textDecoration: "none" }} to="/">
+              Hash Demo
             </NavLink>
           </Typography>
-          <b>Account ID:</b>{" "}
-          <FormControl sx={{ m: 1, minWidth: 80 }}>
+
+          <Typography variant="caption" sx={{ opacity: 0.6, display: { xs: "none", md: "block" } }}>
+            Account:
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 80 }}>
             <Select
-              autoWidth
               value={props.accountId}
-              style={{ color: "white" }}
               onChange={handleAccountChange}
+              variant="standard"
+              disableUnderline
+              sx={{ color: "white", fontSize: "0.85rem", "& .MuiSelect-icon": { color: "white" } }}
             >
               {accountList}
             </Select>
           </FormControl>
+
           <Search>
             <SearchIconWrapper>
-              <SearchIcon />
+              <SearchIcon fontSize="small" />
             </SearchIconWrapper>
             <StyledInputBase
-              placeholder="Search…"
+              placeholder="Search accounts, tokens…"
               inputProps={{ "aria-label": "search" }}
               onKeyDown={handleSearch}
               inputRef={searchRef}

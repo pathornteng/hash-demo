@@ -1,33 +1,52 @@
-import { Code, Edit, FileOpen, QueryStats, Upload } from "@mui/icons-material";
+import { Code, CloudUpload, Edit, QueryStats } from "@mui/icons-material";
 import {
+  Alert,
   Backdrop,
+  Box,
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
+  Divider,
   Grid,
+  Paper,
   Snackbar,
-  Alert,
   TextField,
   Typography,
-  IconButton,
 } from "@mui/material";
 import { useState, useRef } from "react";
 import {
+  ContractCallQuery,
+  ContractCreateTransaction,
+  ContractExecuteTransaction,
+  ContractFunctionParameters,
   FileCreateTransaction,
   Hbar,
-  ContractCreateTransaction,
-  ContractCallQuery,
-  ContractFunctionParameters,
-  ContractExecuteTransaction,
 } from "@hashgraph/sdk";
 
+const BYTECODE =
+  "6080604052348015600e575f5ffd5b506101298061001c5f395ff3fe6080604052348015600e575f5ffd5b50600436106030575f3560e01c806360fe47b11460345780636d4ce63c14604c575b5f5ffd5b604a60048036038101906046919060a9565b6066565b005b6052606f565b604051605d919060dc565b60405180910390f35b805f8190555050565b5f5f54905090565b5f5ffd5b5f819050919050565b608b81607b565b81146094575f5ffd5b50565b5f8135905060a3816084565b92915050565b5f6020828403121560bb5760ba6077565b5b5f60c6848285016097565b91505092915050565b60d681607b565b82525050565b5f60208201905060ed5f83018460cf565b9291505056fea26469706673582212201038ddbc58e342ab090234706a02d89156409ec2d521d68fd639ba0fda2997bb64736f6c634300081f0033";
+
+const SOLIDITY_SOURCE = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SimpleStorage {
+    uint256 private storedData;
+
+    function set(uint256 value) public {
+        storedData = value;
+    }
+
+    function get() public view returns (uint256) {
+        return storedData;
+    }
+}`;
+
 const SmartContract = (props) => {
-  const [file, setFile] = useState({});
-  const [showUploadButton, setShowUploadButton] = useState(false);
-  const [receipt, setReceipt] = useState({});
   const [contract, setContract] = useState({});
-  const [queryResult, setQueryResult] = useState();
+  const [queryResult, setQueryResult] = useState(null);
+  const [deploying, setDeploying] = useState(false);
   const [snackbar, setSnackbar] = useState({
     message: "",
     severity: "success",
@@ -36,19 +55,53 @@ const SmartContract = (props) => {
   const [backdropOpen, setBackdropOpen] = useState(false);
   const inputRef = useRef();
 
-  const onFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setShowUploadButton(true);
+  const deploy = async () => {
+    setDeploying(true);
+    setBackdropOpen(true);
+    try {
+      const transaction = await new FileCreateTransaction()
+        .setKeys([props.client.operatorPublicKey])
+        .setContents(BYTECODE)
+        .setMaxTransactionFee(new Hbar(2))
+        .freezeWith(props.client);
+      const submitTx = await transaction.execute(props.client);
+      const receipt = await submitTx.getReceipt(props.client);
+
+      const contractInstantiateTx = new ContractCreateTransaction()
+        .setBytecodeFileId(receipt.fileId)
+        .setGas(200000);
+      const contractInstantiateSubmit = await contractInstantiateTx.execute(
+        props.client
+      );
+      const contractInstantiateRx =
+        await contractInstantiateSubmit.getReceipt(props.client);
+      const contractId = contractInstantiateRx.contractId;
+      const contractAddress = contractId.toSolidityAddress();
+      setContract({ contractId, contractAddress });
+      setSnackbar({
+        message: "Contract deployed successfully!",
+        open: true,
+        severity: "success",
+      });
+    } catch (err) {
+      setSnackbar({
+        message: "Failed to deploy: " + err.toString(),
+        open: true,
+        severity: "error",
+      });
+    }
+    setBackdropOpen(false);
+    setDeploying(false);
   };
 
-  const contractTx = async () => {
+  const setData = async () => {
     setBackdropOpen(true);
     try {
       const contractExecuteTx = new ContractExecuteTransaction()
         .setContractId(contract.contractId)
         .setGas(100000)
         .setFunction(
-          "store",
+          "set",
           new ContractFunctionParameters().addUint256(
             parseInt(inputRef.current?.value)
           )
@@ -57,21 +110,15 @@ const SmartContract = (props) => {
       const contractExecuteSubmit = await contractExecuteTx.execute(
         props.client
       );
-      const contractExecuteRx = await contractExecuteSubmit.getReceipt(
-        props.client
-      );
-      console.log(
-        `- Contract function call status: ${contractExecuteRx.status} \n`
-      );
+      await contractExecuteSubmit.getReceipt(props.client);
       setSnackbar({
-        message: "Called contract successfully",
+        message: "Value stored successfully",
         severity: "success",
         open: true,
       });
     } catch (err) {
-      console.warn(err);
       setSnackbar({
-        message: "Failed to call the contract " + err.toString(),
+        message: "Failed to set value: " + err.toString(),
         severity: "error",
         open: true,
       });
@@ -79,26 +126,24 @@ const SmartContract = (props) => {
     setBackdropOpen(false);
   };
 
-  const contractCall = async () => {
+  const getData = async () => {
     setBackdropOpen(true);
     try {
       const contractQueryTx = new ContractCallQuery()
         .setContractId(contract.contractId)
         .setGas(100000)
-        .setFunction("retrieve")
+        .setFunction("get")
         .setMaxQueryPayment(new Hbar(1));
       const transactionResult = await contractQueryTx.execute(props.client);
-      const contractQueryResult = transactionResult.getUint256(0);
-      setQueryResult(contractQueryResult);
+      setQueryResult(transactionResult.getUint256(0).toString());
       setSnackbar({
-        message: "Called the contract successfully",
+        message: "Value retrieved successfully",
         open: true,
         severity: "success",
       });
     } catch (err) {
-      console.warn(err);
       setSnackbar({
-        message: "Failed to call the contract " + err.toString(),
+        message: "Failed to get value: " + err.toString(),
         open: true,
         severity: "error",
       });
@@ -106,73 +151,7 @@ const SmartContract = (props) => {
     setBackdropOpen(false);
   };
 
-  const readFile = async () => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        resolve(event.target.result);
-      };
-      reader.readAsText(file);
-    });
-  };
-
-  const fileSubmit = async () => {
-    setBackdropOpen(true);
-    try {
-      const fileContent = await readFile();
-      console.log("FileContent", fileContent);
-
-      const transaction = await new FileCreateTransaction()
-        .setKeys([props.client.operatorPublicKey]) //A different key then the client operator key
-        .setContents(fileContent)
-        .setMaxTransactionFee(new Hbar(2))
-        .freezeWith(props.client);
-      //Sign with the client operator private key and submit to a Hedera network
-      const submitTx = await transaction.execute(props.client);
-
-      //Request the receipt
-      const receipt = await submitTx.getReceipt(props.client);
-      setReceipt(receipt);
-      console.log(receipt);
-
-      //Get the file ID
-      const smartContractFileID = receipt.fileId;
-
-      const contractInstantiateTx = new ContractCreateTransaction()
-        .setBytecodeFileId(smartContractFileID)
-        .setGas(100000)
-        .setConstructorParameters();
-      const contractInstantiateSubmit = await contractInstantiateTx.execute(
-        props.client
-      );
-      const contractInstantiateRx = await contractInstantiateSubmit.getReceipt(
-        props.client
-      );
-      const contractId = contractInstantiateRx.contractId;
-      const contractAddress = contractId.toSolidityAddress();
-      console.log(`- The smart contract ID is: ${contractId} \n`);
-      console.log(
-        `- Smart contract ID in Solidity format: ${contractAddress} \n`
-      );
-      setContract({
-        contractId: contractId,
-        contractAddress: contractAddress,
-      });
-      setSnackbar({
-        message: "Uploaded and deployed the contract successfully!",
-        open: true,
-        severity: "success",
-      });
-    } catch (err) {
-      console.warn("File submit error", err);
-      setSnackbar({
-        message: "Failed to upload and deploy the contract " + err.toString(),
-        open: true,
-        severity: "error",
-      });
-    }
-    setBackdropOpen(false);
-  };
+  const isDeployed = contract.contractId != null;
 
   return (
     <div>
@@ -183,13 +162,9 @@ const SmartContract = (props) => {
         <CircularProgress color="inherit" />
       </Backdrop>
       <Snackbar
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
         autoHideDuration={3000}
         open={snackbar.open}
-        severity={snackbar.severity}
         onClose={() =>
           setSnackbar({
             open: false,
@@ -202,104 +177,376 @@ const SmartContract = (props) => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
       <Typography gutterBottom variant="h5" component="div">
-        <Code fontSize="small" />{" "}
+        <Code fontSize="small" />
         <b style={{ marginLeft: "5px" }}>Smart Contract</b>
       </Typography>
-      <Card sx={{ minWidth: 275 }}>
-        <CardContent>
-          <Typography gutterBottom variant="h6" component="div">
-            <b>Upload Smart Contract Bytecode</b>
-          </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                component="label"
-                color="secondary"
-                startIcon={<FileOpen />}
-              >
-                Select bytecode
-                <input type="file" hidden onChange={onFileChange} />
-              </Button>{" "}
-              <b style={{ margin: "5px" }}>{file.name}</b>{" "}
-              {showUploadButton && (
-                <IconButton
-                  visible={showUploadButton.toString()}
-                  color="info"
-                  onClick={fileSubmit}
-                >
-                  <Upload />
-                </IconButton>
-              )}
-            </Grid>
 
-            <Grid item xs={12}>
-              {receipt.fileId != null && (
-                <div>
-                  <b>FileID:</b> {receipt.fileId?.toString()}
-                </div>
-              )}
-              {contract.contractId != null && (
-                <div>
-                  <div>
-                    <b>ContractId:</b> {contract.contractId?.toString()}
-                  </div>
-                  <div>
-                    <b>ContractAddress:</b>{" "}
-                    {contract.contractAddress?.toString()}
-                  </div>
-                </div>
-              )}
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-      <br />
-      <Card mt={5} sx={{ minWidth: 275 }}>
-        <CardContent>
-          <Typography gutterBottom variant="h6" component="div">
-            <b>Call Smart Contract</b>
-          </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={3}>
-              <TextField
-                id="Number"
-                name="Number"
-                label="Store a number"
-                fullWidth
-                variant="standard"
-                inputRef={inputRef}
+      <Grid container spacing={3}>
+        {/* Left: Source code */}
+        <Grid item xs={12} md={7}>
+          <Card
+            elevation={0}
+            sx={{ border: "1px solid", borderColor: "divider", height: "100%" }}
+          >
+            {/* Code block header */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 2,
+                py: 1,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                backgroundColor: "#fafafa",
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    backgroundColor: "#5D6DD8",
+                  }}
+                />
+                <Typography
+                  sx={{
+                    fontSize: "0.8rem",
+                    fontFamily: "monospace",
+                    color: "text.secondary",
+                    fontWeight: 600,
+                  }}
+                >
+                  SimpleStorage.sol
+                </Typography>
+              </Box>
+              <Chip
+                label="Solidity 0.8"
+                size="small"
+                sx={{
+                  fontSize: "0.68rem",
+                  height: 20,
+                  backgroundColor: "#eef0fb",
+                  color: "#5D6DD8",
+                  fontWeight: 600,
+                }}
               />
-            </Grid>
-            <Grid item xs={9}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Edit />}
-                color="secondary"
-                onClick={contractTx}
+            </Box>
+
+            {/* Source */}
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: "#1a1a2e",
+                color: "#e2e8f0",
+                m: 0,
+                p: 2.5,
+                fontFamily: "'Fira Code', 'Courier New', monospace",
+                fontSize: "0.8rem",
+                lineHeight: 1.75,
+                overflowX: "auto",
+              }}
+            >
+              {SOLIDITY_SOURCE}
+            </Box>
+          </Card>
+        </Grid>
+
+        {/* Right: Deploy + Contract info */}
+        <Grid item xs={12} md={5}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* Deploy card */}
+            <Card
+              elevation={0}
+              sx={{ border: "1px solid", borderColor: "divider" }}
+            >
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                  Deploy
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2.5 }}
+                >
+                  Compile and deploy this contract to Hedera Testnet.
+                </Typography>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  color="primary"
+                  startIcon={
+                    deploying ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <CloudUpload />
+                    )
+                  }
+                  onClick={deploy}
+                  disabled={deploying}
+                  sx={{ py: 1.25, textTransform: "none", fontSize: "0.95rem" }}
+                >
+                  {deploying ? "Deploying…" : "Deploy to Hedera Testnet"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Contract info — shown after deploy */}
+            {isDeployed && (
+              <Card
+                elevation={0}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "success.main",
+                  backgroundColor: "#f6fef6",
+                }}
               >
-                Set
-              </Button>{" "}
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<QueryStats />}
-                color="secondary"
-                onClick={contractCall}
-              >
-                Get
-              </Button>
-            </Grid>
-            <Grid item xs={12}>
-              {queryResult && (
-                <div> The number is {queryResult.toString()}</div>
+                <CardContent sx={{ pb: "16px !important" }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 2,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: "success.main",
+                      }}
+                    />
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Contract Deployed
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
+                      >
+                        Contract ID
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontFamily: "monospace", fontWeight: 600 }}
+                      >
+                        <a
+                          target="_blank"
+                          rel="noreferrer"
+                          href={
+                            "https://hashscan.io/testnet/contract/" +
+                            contract.contractId?.toString()
+                          }
+                          style={{ color: "#5D6DD8", textDecoration: "none" }}
+                        >
+                          {contract.contractId?.toString()}
+                        </a>
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
+                      >
+                        EVM Address
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: "monospace",
+                          wordBreak: "break-all",
+                          fontSize: "0.75rem",
+                          color: "text.secondary",
+                        }}
+                      >
+                        0x{contract.contractAddress}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
+          </Box>
+        </Grid>
+
+        {/* Interact section — full width */}
+        <Grid item xs={12}>
+          <Card
+            elevation={0}
+            sx={{ border: "1px solid", borderColor: "divider" }}
+          >
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                Interact
+              </Typography>
+
+              {!isDeployed ? (
+                <Typography variant="body2" color="text.secondary">
+                  Deploy the contract first to interact with it.
+                </Typography>
+              ) : (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  {/* set() */}
+                  <Box sx={{ py: 2.5 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 2,
+                      }}
+                    >
+                      <Chip
+                        label="write"
+                        size="small"
+                        sx={{
+                          fontSize: "0.68rem",
+                          height: 20,
+                          backgroundColor: "#fff3e0",
+                          color: "#e65100",
+                          fontWeight: 700,
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontFamily: "monospace",
+                          fontSize: "0.85rem",
+                          color: "text.primary",
+                          fontWeight: 600,
+                        }}
+                      >
+                        set(uint256 value)
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <TextField
+                        label="Value"
+                        type="number"
+                        variant="outlined"
+                        size="small"
+                        inputRef={inputRef}
+                        sx={{ width: 180 }}
+                      />
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Edit fontSize="small" />}
+                        onClick={setData}
+                        sx={{ textTransform: "none" }}
+                      >
+                        Set value
+                      </Button>
+                    </Box>
+                  </Box>
+
+                  <Divider />
+
+                  {/* get() */}
+                  <Box sx={{ py: 2.5 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 2,
+                      }}
+                    >
+                      <Chip
+                        label="read"
+                        size="small"
+                        sx={{
+                          fontSize: "0.68rem",
+                          height: 20,
+                          backgroundColor: "#eef0fb",
+                          color: "#5D6DD8",
+                          fontWeight: 700,
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontFamily: "monospace",
+                          fontSize: "0.85rem",
+                          color: "text.primary",
+                          fontWeight: 600,
+                        }}
+                      >
+                        get() → uint256
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <Button
+                        variant="outlined"
+                        startIcon={<QueryStats fontSize="small" />}
+                        onClick={getData}
+                        sx={{
+                          textTransform: "none",
+                          borderColor: "#5D6DD8",
+                          color: "#5D6DD8",
+                          "&:hover": {
+                            borderColor: "#4a5bc4",
+                            backgroundColor: "#eef0fb",
+                          },
+                        }}
+                      >
+                        Get value
+                      </Button>
+                      {queryResult !== null && (
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            px: 2,
+                            py: 0.75,
+                            border: "1px solid",
+                            borderColor: "#5D6DD8",
+                            borderRadius: 1,
+                            backgroundColor: "#eef0fb",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: "0.7rem",
+                              color: "#5D6DD8",
+                              textTransform: "uppercase",
+                              letterSpacing: 0.5,
+                              fontWeight: 700,
+                            }}
+                          >
+                            result
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontFamily: "monospace",
+                              fontSize: "0.9rem",
+                              fontWeight: 700,
+                              color: "#1a1a2e",
+                            }}
+                          >
+                            {queryResult}
+                          </Typography>
+                        </Paper>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
               )}
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </div>
   );
 };

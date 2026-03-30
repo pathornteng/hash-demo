@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
 import {
   AccountBalanceQuery,
   TokenCreateTransaction,
@@ -29,28 +26,34 @@ import {
 import {
   Alert,
   Backdrop,
+  Box,
   Button,
+  Card,
+  CardContent,
+  Chip,
   CircularProgress,
+  Divider,
   Grid,
   IconButton,
   Modal,
   Snackbar,
   TextField,
   Tooltip,
+  Typography,
 } from "@mui/material";
-import { Box } from "@mui/system";
 import MirrorNodeAPI from "../api/mirror-node-api";
 
-const style = {
+const modalStyle = {
   position: "absolute",
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: 400,
+  width: 440,
   bgcolor: "background.paper",
-  border: "2px solid #000",
+  borderRadius: 2,
   boxShadow: 24,
-  p: 4,
+  outline: "none",
+  overflow: "hidden",
 };
 
 const FungibleToken = (props) => {
@@ -67,20 +70,14 @@ const FungibleToken = (props) => {
   const [refreshCount, setRefreshCount] = useState(0);
   const [backdropOpen, setBackdropOpen] = useState(false);
   const [sigKey, setSigKey] = useState();
-  const [snackbar, setSnackbar] = useState({
-    message: "",
-    severity: "success",
-    open: false,
-  });
+  const [snackbar, setSnackbar] = useState({ message: "", severity: "success", open: false });
 
   const accountRef = useRef();
   const amountRef = useRef();
-
   const tokenNameRef = useRef();
   const tokenSymbolRef = useRef();
   const decimalRef = useRef();
   const totalSupplyRef = useRef();
-
   const tokenIdRef = useRef();
   const mintAmountRef = useRef();
 
@@ -97,7 +94,6 @@ const FungibleToken = (props) => {
       const tokens = account.balance.tokens;
       let tokenRelationships = [];
       let tokenInfo = {};
-
       setLoading(true);
       for (const token of tokens) {
         let query = await api.getToken(token.token_id);
@@ -128,20 +124,11 @@ const FungibleToken = (props) => {
       const txResponse = await signTx.execute(props.client);
       await txResponse.getReceipt(props.client);
       await delay(mirrorNodeDelay);
-      setSnackbar({
-        message: "Tokens transfered successfully",
-        severity: "success",
-        open: true,
-      });
+      setSnackbar({ message: "Tokens transferred successfully", severity: "success", open: true });
       setTransferModalOpen(false);
       setRefreshCount(refreshCount + 1);
     } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Failed to transfer token " + err.toString(),
-        severity: "error",
-        open: true,
-      });
+      setSnackbar({ message: "Failed to transfer token: " + err.toString(), severity: "error", open: true });
       setTransferModalOpen(false);
     }
     setBackdropOpen(false);
@@ -158,20 +145,11 @@ const FungibleToken = (props) => {
       const txResponse = await signedTx.execute(props.client);
       await txResponse.getReceipt(props.client);
       await delay(mirrorNodeDelay);
-      setSnackbar({
-        message: "Tokens minted successfully",
-        severity: "success",
-        open: true,
-      });
+      setSnackbar({ message: "Tokens minted successfully", severity: "success", open: true });
       setMintModalOpen(false);
       setRefreshCount(refreshCount + 1);
     } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Failed to mint token " + err.toString(),
-        severity: "error",
-        open: true,
-      });
+      setSnackbar({ message: "Failed to mint token: " + err.toString(), severity: "error", open: true });
     }
     setBackdropOpen(false);
   };
@@ -186,138 +164,116 @@ const FungibleToken = (props) => {
       const txResponse = await signTx.execute(props.client);
       await txResponse.getReceipt(props.client);
       await delay(mirrorNodeDelay);
-      setSnackbar({
-        message: "Tokens deleted successfully",
-        severity: "success",
-        open: true,
-      });
+      setSnackbar({ message: "Token deleted successfully", severity: "success", open: true });
       setRefreshCount(refreshCount + 1);
     } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Failed to delete the token " + err.toString(),
-        severity: "error",
-        open: true,
-      });
+      setSnackbar({ message: "Failed to delete the token: " + err.toString(), severity: "error", open: true });
     }
     setBackdropOpen(false);
   };
 
   const tokenList = tokens
-    .filter((token) => tokenInfo[token.token_id].type === "FUNGIBLE_COMMON")
+    .filter((token) => tokenInfo[token.token_id]?.type === "FUNGIBLE_COMMON")
     .map((token) => {
+      const info = tokenInfo[token.token_id.toString()];
+      const isTreasury = info?.treasury_account_id?.toString() === props.accountId;
+      const isAdmin = props.publicKey.includes(info?.admin_key?.key?.toString()) && !info?.deleted;
+      const canDissociate = info?.deleted || (!isTreasury && info?.balance === 0);
+
       return (
-        <Grid item xs={6} key={token.token_id.toString()}>
-          <Card sx={{ minWidth: 150 }}>
+        <Grid item xs={12} sm={6} key={token.token_id.toString()}>
+          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", height: "100%" }}>
             <CardContent>
-              <div>
-                <b>TokenID:</b>{" "}
-                <a
-                  target="_blank"
-                  rel="noreferrer"
-                  href={
-                    "https://hashscan.io/testnet/token/" +
-                    token.token_id.toString()
-                  }
-                >
-                  {token.token_id.toString()}
-                </a>
-              </div>
-              <div>
-                <b>Name:</b>{" "}
-                {tokenInfo[token.token_id.toString()]?.name?.toString()}
-              </div>
-              <div>
-                <b>Symbol:</b>{" "}
-                {tokenInfo[token.token_id.toString()]?.symbol?.toString()}
-              </div>
-              <div>
-                <b>Balance:</b>{" "}
-                {tokenInfo[token.token_id.toString()]?.balance?.toString()}
-              </div>
-              <div>
-                <b>IsDeleted:</b>{" "}
-                {tokenInfo[token.token_id.toString()]?.deleted?.toString()}
-              </div>
-              <div>
-                <b>TokenType:</b>{" "}
-                {tokenInfo[token.token_id.toString()]?.type?.toString()}
-              </div>
-              <div>
-                <b>Treasury Account:</b>{" "}
-                {tokenInfo[
-                  token.token_id.toString()
-                ]?.treasury_account_id?.toString()}
-                {tokenInfo[
-                  token.token_id.toString()
-                ]?.treasury_account_id?.toString() === props.accountId && (
-                  <strong> (it's you!)</strong>
-                )}
-              </div>
-              <div>
-                <hr />
-                {!tokenInfo[token.token_id.toString()]?.deleted && (
-                  <Button
-                    variant="contained"
-                    component="label"
-                    startIcon={<Send />}
-                    color="secondary"
-                    onClick={() => {
-                      setTransferModalOpen(true);
-                      setSelectedToken(token);
-                    }}
-                  >
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+                <Box>
+                  <Typography fontWeight={700}>{info?.name}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                    {info?.symbol}
+                  </Typography>
+                </Box>
+                <Chip
+                  label={info?.deleted ? "Deleted" : "Active"}
+                  size="small"
+                  color={info?.deleted ? "error" : "success"}
+                  variant="outlined"
+                  sx={{ fontSize: "0.68rem", height: 20 }}
+                />
+              </Box>
+
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                    Token ID
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+                    <a
+                      target="_blank"
+                      rel="noreferrer"
+                      href={"https://hashscan.io/testnet/token/" + token.token_id.toString()}
+                    >
+                      {token.token_id.toString()}
+                    </a>
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", gap: 3 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                      Balance
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>{info?.balance?.toString()}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                      Type
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>{info?.type}</Typography>
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                    Treasury
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.78rem" }}>
+                      {info?.treasury_account_id?.toString()}
+                    </Typography>
+                    {isTreasury && (
+                      <Chip label="you" size="small" sx={{ fontSize: "0.62rem", height: 16 }} />
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+
+              <Divider sx={{ mb: 1.5 }} />
+
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {!info?.deleted && (
+                  <Button variant="contained" color="primary" size="small" startIcon={<Send />}
+                    onClick={() => { setTransferModalOpen(true); setSelectedToken(token); }}
+                    sx={{ textTransform: "none" }}>
                     Transfer
                   </Button>
-                )}{" "}
-                {props.publicKey.includes(
-                  tokenInfo[
-                    token.token_id.toString()
-                  ]?.admin_key?.key?.toString()
-                ) &&
-                  !tokenInfo[token.token_id.toString()]?.deleted && (
-                    <span>
-                      <Button
-                        variant="contained"
-                        component="label"
-                        startIcon={<Money />}
-                        color="secondary"
-                        onClick={() => {
-                          setSelectedToken(token);
-                          setMintModalOpen(true);
-                        }}
-                      >
-                        Mint
-                      </Button>{" "}
-                      <IconButton
-                        color="error"
-                        onClick={() => deleteToken(token)}
-                        style={{ float: "right" }}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </span>
-                  )}{" "}
-                {(tokenInfo[token.token_id.toString()]?.deleted ||
-                  (tokenInfo[
-                    token.token_id.toString()
-                  ]?.treasury_account_id?.toString() !== props.accountId &&
-                    tokenInfo[token.token_id.toString()]?.balance === 0)) && (
-                  <span>
-                    <Button
-                      variant="contained"
-                      component="label"
-                      startIcon={<LinkOff />}
-                      color="secondary"
-                      style={{ float: "right" }}
-                      onClick={() => dissociateToken(token)}
-                    >
-                      Dissociate
-                    </Button>
-                  </span>
-                )}{" "}
-                <br/>
-              </div>
+                )}
+                {isAdmin && (
+                  <Button variant="outlined" size="small" startIcon={<Money />}
+                    onClick={() => { setSelectedToken(token); setMintModalOpen(true); }}
+                    sx={{ textTransform: "none" }}>
+                    Mint
+                  </Button>
+                )}
+                {canDissociate && (
+                  <Button variant="outlined" size="small" color="error" startIcon={<LinkOff />}
+                    onClick={() => dissociateToken(token)}
+                    sx={{ textTransform: "none", ml: "auto" }}>
+                    Dissociate
+                  </Button>
+                )}
+                {isAdmin && (
+                  <IconButton size="small" color="error" onClick={() => deleteToken(token)} sx={{ ml: canDissociate ? 0 : "auto" }}>
+                    <Delete fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -332,24 +288,14 @@ const FungibleToken = (props) => {
         .setTokenIds([tokenIdRef.current?.value])
         .freezeWith(props.client)
         .sign(sigKey);
-
       let associateTxSubmit = await associateTx.execute(props.client);
       await associateTxSubmit.getReceipt(props.client);
       await delay(mirrorNodeDelay);
-      setSnackbar({
-        message: "Associate token success!",
-        severity: "success",
-        open: true,
-      });
+      setSnackbar({ message: "Token associated successfully!", severity: "success", open: true });
       setAssociateModalOpen(false);
       setRefreshCount(refreshCount + 1);
     } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Failed to associate token " + err.toString(),
-        severity: "error",
-        open: true,
-      });
+      setSnackbar({ message: "Failed to associate token: " + err.toString(), severity: "error", open: true });
     }
     setBackdropOpen(false);
   };
@@ -365,19 +311,10 @@ const FungibleToken = (props) => {
       let dissociateTxSubmit = await dissociateTx.execute(props.client);
       await dissociateTxSubmit.getReceipt(props.client);
       await delay(mirrorNodeDelay);
-      setSnackbar({
-        message: "Token dissociation successful",
-        severity: "success",
-        open: true,
-      });
+      setSnackbar({ message: "Token dissociated successfully", severity: "success", open: true });
       setRefreshCount(refreshCount + 1);
     } catch (err) {
-      console.warn(err);
-      setSnackbar({
-        message: "Dissociation failed " + err.toString(),
-        severity: "error",
-        open: true,
-      });
+      setSnackbar({ message: "Dissociation failed: " + err.toString(), severity: "error", open: true });
     }
     setBackdropOpen(false);
   };
@@ -386,12 +323,10 @@ const FungibleToken = (props) => {
     setBackdropOpen(true);
     try {
       const sigKey = PrivateKey.fromString(props.privateKey);
-
       const tokenName = tokenNameRef.current?.value;
       const tokenSymbol = tokenSymbolRef.current?.value;
       const decimal = parseInt(decimalRef.current?.value);
       const totalSupply = parseInt(totalSupplyRef.current?.value);
-
       let tokenCreateTx = await new TokenCreateTransaction()
         .setTokenName(tokenName)
         .setTokenSymbol(tokenSymbol)
@@ -403,358 +338,162 @@ const FungibleToken = (props) => {
         .setSupplyKey(sigKey)
         .setAdminKey(sigKey)
         .freezeWith(props.client);
-      //SIGN WITH TREASURY KEY
       let tokenCreateSign = await tokenCreateTx.sign(sigKey);
-      //SUBMIT THE TRANSACTION
       let tokenCreateSubmit = await tokenCreateSign.execute(props.client);
-      //GET THE TRANSACTION RECEIPT
       let tokenCreateRx = await tokenCreateSubmit.getReceipt(props.client);
       let tokenId = tokenCreateRx.tokenId;
       await delay(mirrorNodeDelay);
-      setSnackbar({
-        message: "Create token success, tokenID: " + tokenId,
-        severity: "success",
-        open: true,
-      });
+      setSnackbar({ message: "Token created! ID: " + tokenId, severity: "success", open: true });
       setCreateModalOpen(false);
       setRefreshCount(refreshCount + 1);
     } catch (err) {
-      console.warn("Create token failed", err);
-      setSnackbar({
-        message: "Failed to create token " + err.toString(),
-        severity: "error",
-        open: true,
-      });
+      setSnackbar({ message: "Failed to create token: " + err.toString(), severity: "error", open: true });
     }
     setBackdropOpen(false);
   };
 
   return (
     <div>
-      <Backdrop
-        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1000 }}
-        open={backdropOpen}
-      >
+      <Backdrop sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1000 }} open={backdropOpen}>
         <CircularProgress color="inherit" />
       </Backdrop>
       <Snackbar
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
         autoHideDuration={3000}
         open={snackbar.open}
-        severity={snackbar.severity}
-        onClose={() =>
-          setSnackbar({
-            open: false,
-            message: snackbar.message,
-            severity: snackbar.severity,
-          })
-        }
+        onClose={() => setSnackbar({ open: false, message: snackbar.message, severity: snackbar.severity })}
       >
-        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>{snackbar.message}</Alert>
       </Snackbar>
-      <Typography gutterBottom variant="h5" component="div">
-        <CurrencyExchange fontSize="small" />{" "}
-        <b style={{ marginLeft: "5px" }}>Fungible Token</b>
-      </Typography>
+
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
+        <CurrencyExchange fontSize="small" />
+        <Typography variant="h5" fontWeight={700}>Fungible Token</Typography>
+      </Box>
+
       <Grid container spacing={3}>
+        {/* Account summary */}
         <Grid item xs={12}>
-          <Card sx={{ minWidth: 275 }}>
+          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
             <CardContent>
-              <Typography
-                sx={{ fontSize: 16 }}
-                color="text.secondary"
-                gutterBottom
-              >
-                <b>Account ID:</b>{" "}
-                <a
-                  target="_blank"
-                  rel="noreferrer"
-                  href={
-                    "https://hashscan.io/testnet/account/" + props.accountId
-                  }
-                >
-                  {props.accountId}
-                </a>
-              </Typography>
-              <Typography
-                sx={{ fontSize: 16 }}
-                color="text.secondary"
-                gutterBottom
-              >
-                <b>Public Key:</b> {props.publicKey}
-              </Typography>
-              <Typography
-                sx={{ fontSize: 16 }}
-                color="text.secondary"
-                gutterBottom
-              >
-                <b>Private Key:</b>{" "}
-                <Tooltip arrow title={props.privateKey}>
-                  <IconButton>
-                    <Key />
-                  </IconButton>
-                </Tooltip>
-              </Typography>
-              <Typography
-                sx={{ fontSize: 16 }}
-                color="text.secondary"
-                gutterBottom
-              >
-                <b>Hbar:</b> {hbarBalance}
-              </Typography>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<MonetizationOn />}
-                color="secondary"
-                onClick={() => setCreateModalOpen(true)}
-              >
-                Create Token
-              </Button>{" "}
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Link />}
-                color="secondary"
-                onClick={() => setAssociateModalOpen(true)}
-                ml={5}
-              >
-                Associate Token
-              </Button>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight={700}>Account</Typography>
+              </Box>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 2, mb: 2.5 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>Account ID</Typography>
+                  <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 600 }}>
+                    <a target="_blank" rel="noreferrer" href={"https://hashscan.io/testnet/account/" + props.accountId}>
+                      {props.accountId}
+                    </a>
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>Balance</Typography>
+                  <Typography variant="body2" fontWeight={700}>{hbarBalance}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>Private Key</Typography>
+                  <Tooltip arrow title={props.privateKey}>
+                    <Chip icon={<Key sx={{ fontSize: "14px !important" }} />} label="View" size="small" variant="outlined" clickable sx={{ fontSize: "0.72rem" }} />
+                  </Tooltip>
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button variant="contained" color="primary" size="small" startIcon={<MonetizationOn />}
+                  onClick={() => setCreateModalOpen(true)} sx={{ textTransform: "none" }}>
+                  Create Token
+                </Button>
+                <Button variant="outlined" size="small" startIcon={<Link />}
+                  onClick={() => setAssociateModalOpen(true)} sx={{ textTransform: "none" }}>
+                  Associate Token
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
-        <Grid
-          item
-          xs={12}
-          style={{ textAlign: "center", display: loading ? "block" : "none" }}
-        >
-          <CircularProgress />
-        </Grid>
+
+        {/* Loading */}
+        {loading && (
+          <Grid item xs={12} sx={{ textAlign: "center" }}>
+            <CircularProgress size={28} />
+          </Grid>
+        )}
+
+        {/* Token cards */}
         {tokenList}
       </Grid>
 
-      <Modal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                id="TokenName"
-                name="TokenName"
-                label="Token Name"
-                fullWidth
-                variant="standard"
-                inputRef={tokenNameRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="TokenSymbol"
-                name="TokenSymbol"
-                label="Token Symbol"
-                fullWidth
-                variant="standard"
-                inputRef={tokenSymbolRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="Decimal"
-                name="Decimal"
-                label="Decimal"
-                fullWidth
-                variant="standard"
-                inputRef={decimalRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="TotalSupply"
-                name="TotalSupply"
-                label="Total supply"
-                fullWidth
-                variant="standard"
-                inputRef={totalSupplyRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Create />}
-                color="secondary"
-                onClick={createToken}
-              >
-                Create
-              </Button>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Close />}
-                color="error"
-                style={{ float: "right" }}
-                onClick={() => setCreateModalOpen(false)}
-              >
-                Close
-              </Button>
-            </Grid>
-          </Grid>
+      {/* Create Token Modal */}
+      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)}>
+        <Box sx={modalStyle}>
+          <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "#fafafa" }}>
+            <Typography variant="subtitle1" fontWeight={700}>Create Fungible Token</Typography>
+          </Box>
+          <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+            <TextField label="Token Name" fullWidth variant="outlined" size="small" inputRef={tokenNameRef} />
+            <TextField label="Token Symbol" fullWidth variant="outlined" size="small" inputRef={tokenSymbolRef} />
+            <TextField label="Decimals" fullWidth variant="outlined" size="small" inputRef={decimalRef} type="number" />
+            <TextField label="Initial Supply" fullWidth variant="outlined" size="small" inputRef={totalSupplyRef} type="number" />
+          </Box>
+          <Box sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            <Button variant="outlined" size="small" startIcon={<Close />} onClick={() => setCreateModalOpen(false)} sx={{ textTransform: "none" }}>Cancel</Button>
+            <Button variant="contained" color="primary" size="small" startIcon={<Create />} onClick={createToken} sx={{ textTransform: "none" }}>Create</Button>
+          </Box>
         </Box>
       </Modal>
 
-      <Modal
-        open={transferModalOpen}
-        onClose={() => setTransferModalOpen(false)}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <b>Token:</b> {selectedToken.token_id?.toString()} (
-              {tokenInfo[
-                selectedToken.token_id?.toString()
-              ]?.symbol?.toString()}
-              )
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="AccountID"
-                name="AccountID"
-                label="Reciever's AccountID"
-                fullWidth
-                variant="standard"
-                inputRef={accountRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                id="Amount"
-                name="Amount"
-                label="Amount"
-                fullWidth
-                variant="standard"
-                inputRef={amountRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Send />}
-                color="secondary"
-                onClick={transferToken}
-              >
-                Send
-              </Button>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Close />}
-                color="error"
-                style={{ float: "right" }}
-                onClick={() => setTransferModalOpen(false)}
-              >
-                Close
-              </Button>
-            </Grid>
-          </Grid>
+      {/* Transfer Modal */}
+      <Modal open={transferModalOpen} onClose={() => setTransferModalOpen(false)}>
+        <Box sx={modalStyle}>
+          <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "#fafafa" }}>
+            <Typography variant="subtitle1" fontWeight={700}>Transfer Token</Typography>
+            {selectedToken.token_id && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                {selectedToken.token_id?.toString()} ({tokenInfo[selectedToken.token_id?.toString()]?.symbol})
+              </Typography>
+            )}
+          </Box>
+          <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+            <TextField label="Receiver's Account ID" fullWidth variant="outlined" size="small" inputRef={accountRef} />
+            <TextField label="Amount" fullWidth variant="outlined" size="small" inputRef={amountRef} type="number" />
+          </Box>
+          <Box sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            <Button variant="outlined" size="small" startIcon={<Close />} onClick={() => setTransferModalOpen(false)} sx={{ textTransform: "none" }}>Cancel</Button>
+            <Button variant="contained" color="primary" size="small" startIcon={<Send />} onClick={transferToken} sx={{ textTransform: "none" }}>Send</Button>
+          </Box>
         </Box>
       </Modal>
 
-      <Modal
-        open={associateModalOpen}
-        onClose={() => setAssociateModalOpen(false)}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                id="TokenID"
-                name="TokenID"
-                label="TokenID to be associated"
-                fullWidth
-                variant="standard"
-                inputRef={tokenIdRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Send />}
-                color="secondary"
-                onClick={associateToken}
-              >
-                Associate
-              </Button>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Close />}
-                color="error"
-                style={{ float: "right" }}
-                onClick={() => setAssociateModalOpen(false)}
-              >
-                Cancel
-              </Button>
-            </Grid>
-          </Grid>
+      {/* Associate Modal */}
+      <Modal open={associateModalOpen} onClose={() => setAssociateModalOpen(false)}>
+        <Box sx={modalStyle}>
+          <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "#fafafa" }}>
+            <Typography variant="subtitle1" fontWeight={700}>Associate Token</Typography>
+          </Box>
+          <Box sx={{ p: 3 }}>
+            <TextField label="Token ID" fullWidth variant="outlined" size="small" inputRef={tokenIdRef} />
+          </Box>
+          <Box sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            <Button variant="outlined" size="small" startIcon={<Close />} onClick={() => setAssociateModalOpen(false)} sx={{ textTransform: "none" }}>Cancel</Button>
+            <Button variant="contained" color="primary" size="small" startIcon={<Link />} onClick={associateToken} sx={{ textTransform: "none" }}>Associate</Button>
+          </Box>
         </Box>
       </Modal>
 
-      <Modal
-        open={mintModalOpen}
-        onClose={() => setMintModalOpen(false)}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                id="MintAmount"
-                name="MintAmount"
-                label="Token amount to be minted"
-                fullWidth
-                variant="standard"
-                inputRef={mintAmountRef}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Money />}
-                color="secondary"
-                onClick={mintToken}
-              >
-                Mint
-              </Button>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<Close />}
-                color="error"
-                style={{ float: "right" }}
-                onClick={() => setMintModalOpen(false)}
-              >
-                Cancel
-              </Button>
-            </Grid>
-          </Grid>
+      {/* Mint Modal */}
+      <Modal open={mintModalOpen} onClose={() => setMintModalOpen(false)}>
+        <Box sx={modalStyle}>
+          <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "#fafafa" }}>
+            <Typography variant="subtitle1" fontWeight={700}>Mint Tokens</Typography>
+          </Box>
+          <Box sx={{ p: 3 }}>
+            <TextField label="Amount to mint" fullWidth variant="outlined" size="small" inputRef={mintAmountRef} type="number" />
+          </Box>
+          <Box sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            <Button variant="outlined" size="small" startIcon={<Close />} onClick={() => setMintModalOpen(false)} sx={{ textTransform: "none" }}>Cancel</Button>
+            <Button variant="contained" color="primary" size="small" startIcon={<Money />} onClick={mintToken} sx={{ textTransform: "none" }}>Mint</Button>
+          </Box>
         </Box>
       </Modal>
     </div>

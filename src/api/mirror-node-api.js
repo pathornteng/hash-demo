@@ -11,8 +11,10 @@ class MirrorNodeAPI {
     return await this.req.get(`api/v1/network/nodes`);
   }
 
-  async getTopicMessages(topicId) {
-    return await this.req.get(`api/v1/topics/${topicId}/messages/`);
+  async getTopicMessages(topicId, afterTimestamp = null) {
+    const params = new URLSearchParams({ limit: 25, order: "asc" });
+    if (afterTimestamp) params.set("timestamp", `gt:${afterTimestamp}`);
+    return await this.req.get(`api/v1/topics/${topicId}/messages?${params}`);
   }
 
   async getToken(tokenId) {
@@ -60,7 +62,6 @@ class MirrorNodeAPI {
   }
 
   async getTransactionsByAccountId(accountId) {
-    //https://testnet.mirrornode.hedera.com/api/v1/transactions?account.id=0.0.34046652
     try {
       return await this.req.get(
         `api/v1/transactions?account.id=${accountId}&limit=5`

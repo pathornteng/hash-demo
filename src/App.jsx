@@ -11,7 +11,7 @@ import ConsensusService from "./components/ConsensusService";
 import SignIn from "./components/SignIn";
 import CssBaseline from "@mui/material/CssBaseline";
 import { Routes, Route } from "react-router-dom";
-import { Client } from "@hashgraph/sdk";
+import { Client, PrivateKey } from "@hashgraph/sdk";
 import React, { useEffect, useState } from "react";
 import FungibleToken from "./components/FungibleToken";
 import NonFungibleToken from "./components/NonFungibleToken";
@@ -25,7 +25,13 @@ const App = () => {
   const api = new MirrorNodeAPI();
 
   useEffect(() => {
-    if (account) client.setOperator(account.accountId, account.privateKey);
+    if (account) {
+      const pk =
+        account.keyType === "ECDSA"
+          ? PrivateKey.fromStringECDSA(account.privateKey)
+          : PrivateKey.fromStringED25519(account.privateKey);
+      client.setOperator(account.accountId, pk);
+    }
   }, [account, accounts, client]);
 
   useEffect(() => {
